@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import dotenv from 'dotenv';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
 dotenv.config();
 
@@ -15,6 +16,13 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
+  const config = new DocumentBuilder()
+    .setTitle('Mandi Plus API')
+    .setDescription('API for Mandi Plus')
+    .setVersion('1.0')
+    .build();
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document);
 
   app.enableCors({
     origin: '*',
