@@ -11,10 +11,12 @@ export const typeOrmConfig: TypeOrmModuleOptions = {
   password: process.env.DB_PASS,
   database: process.env.DB_NAME,
 
+  ssl: {
+    rejectUnauthorized: false,
+  },
+
   autoLoadEntities: true,
-  synchronize: false, //  NEVER true in prod
+  synchronize: false, // never true in prod
   migrationsRun: false,
   logging: true,
-
-  migrations: ['dist/migrations/*.js'],
 };

@@ -71,7 +71,10 @@ export class UsersService {
     const user = await this.findOne(id);
 
     // Check if mobile number is being updated and conflicts with existing user
-    if (updateUserDto.mobileNumber && updateUserDto.mobileNumber !== user.mobileNumber) {
+    if (
+      updateUserDto.mobileNumber &&
+      updateUserDto.mobileNumber !== user.mobileNumber
+    ) {
       const existingUser = await this.userRepository.findOne({
         where: { mobileNumber: updateUserDto.mobileNumber },
       });
@@ -108,4 +111,3 @@ export class UsersService {
     await this.userRepository.remove(user);
   }
 }
-
