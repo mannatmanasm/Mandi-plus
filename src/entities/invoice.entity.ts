@@ -139,6 +139,13 @@ export class Invoice {
   claimDetails: string | null;
 
   // ===============================
+  // PDF DOCUMENT
+  // ===============================
+
+  @Column({ type: 'text', nullable: true })
+  pdfUrl: string | null;
+
+  // ===============================
   // SYSTEM
   // ===============================
 
