@@ -7,6 +7,7 @@ import {
   Index,
 } from 'typeorm';
 import { Identity } from '../common/enums/user.enum';
+import { IndiaState } from '../common/enums/india-state.enum';
 
 @Entity('users')
 @Index(['mobileNumber'], { unique: true })
@@ -39,8 +40,11 @@ export class User {
   @Column({ type: 'varchar', length: 255 })
   name: string;
 
-  @Column({ type: 'varchar', length: 255 })
-  state: string;
+  @Column({
+    type: 'enum',
+    enum: IndiaState,
+  })
+  state: IndiaState;
 
   @Column({
     type: 'enum',
