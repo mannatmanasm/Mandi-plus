@@ -111,18 +111,23 @@ export class PdfService {
         }
         const productName = products.join(', ');
 
+        // Ensure values are Numbers before calling .toFixed()
+        const qty = Number(invoiceData.quantity || 0);
+        const rate = Number(invoiceData.rate || 0);
+        const amount = Number(invoiceData.amount || 0);
+
         doc
           .text(productName, 50)
           .text(invoiceData.hsnCode || '-', 200)
-          .text(invoiceData.quantity.toString(), 280)
-          .text(invoiceData.rate.toFixed(2), 320, undefined, { align: 'right' })
-          .text(invoiceData.amount.toFixed(2), 400, undefined, { align: 'right' })
+          .text(qty.toString(), 280) // Use safe variable
+          .text(rate.toFixed(2), 320, undefined, { align: 'right' }) // Use safe variable
+          .text(amount.toFixed(2), 400, undefined, { align: 'right' }) // Use safe variable
           .moveDown();
 
-        // Total
+        // Total (Update this part too)
         doc
           .fontSize(12)
-          .text(`Total: ₹${invoiceData.amount.toFixed(2)}`, 350, doc.y, { align: 'right' })
+          .text(`Total: ₹${amount.toFixed(2)}`, 350, doc.y, { align: 'right' })
           .moveDown(2);
 
         // Weighment Slip Note

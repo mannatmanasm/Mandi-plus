@@ -5,12 +5,12 @@ import {
   IsArray,
   IsNumber,
   IsBoolean,
-  IsUUID,
   IsDateString,
   Min,
   ArrayMinSize,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type, Transform } from 'class-transformer';
 
 export class CreateInvoiceDto {
   @ApiProperty({ example: 'INV-2024-001', description: 'Invoice number' })
@@ -38,6 +38,19 @@ export class CreateInvoiceDto {
     example: ['123 Main St', 'Mumbai, Maharashtra 400001'], 
     description: 'Supplier address lines' 
   })
+  //Allow string or JSON string to become Array
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      // If it looks like JSON array "['Addr']", parse it. If regular string, wrap in array.
+      try { 
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [value];
+      } catch { 
+        return [value]; 
+      }
+    }
+    return value;
+  })
   @IsArray()
   @ArrayMinSize(1)
   @IsString({ each: true })
@@ -58,6 +71,18 @@ export class CreateInvoiceDto {
     example: ['456 Market St', 'Delhi 110001'], 
     description: 'Bill to address lines' 
   })
+  // Allow string or JSON string to become Array
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      try { 
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [value];
+      } catch { 
+        return [value]; 
+      }
+    }
+    return value;
+  })
   @IsArray()
   @ArrayMinSize(1)
   @IsString({ each: true })
@@ -72,6 +97,18 @@ export class CreateInvoiceDto {
     example: ['456 Market St', 'Delhi 110001'], 
     description: 'Ship to address lines' 
   })
+  // Allow string or JSON string to become Array
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      try { 
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [value];
+      } catch { 
+        return [value]; 
+      }
+    }
+    return value;
+  })
   @IsArray()
   @ArrayMinSize(1)
   @IsString({ each: true })
@@ -79,6 +116,18 @@ export class CreateInvoiceDto {
 
   // Item details
   @ApiProperty({ example: ['Wheat', 'Rice'], description: 'Product names' })
+  //  Allow string or JSON string to become Array
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      try { 
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [value];
+      } catch { 
+        return [value]; 
+      }
+    }
+    return value;
+  })
   @IsArray()
   @ArrayMinSize(1)
   @IsString({ each: true })
@@ -90,16 +139,22 @@ export class CreateInvoiceDto {
   hsnCode?: string;
 
   @ApiProperty({ example: 100.5, description: 'Quantity' })
+  // Convert String "100" to Number 100
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   quantity: number;
 
   @ApiProperty({ example: 50.75, description: 'Rate per unit' })
+  // Convert String to Number
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   rate: number;
 
   @ApiProperty({ example: 5082.50, description: 'Total amount' })
+  // Convert String to Number
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   amount: number;
@@ -123,6 +178,8 @@ export class CreateInvoiceDto {
 
   // Claim details
   @ApiPropertyOptional({ example: false, description: 'Is this a claim invoice' })
+  // Handle Boolean conversion from string
+  @Transform(({ value }) => value === 'true' || value === true)
   @IsBoolean()
   @IsOptional()
   isClaim?: boolean;
@@ -132,4 +189,3 @@ export class CreateInvoiceDto {
   @IsOptional()
   claimDetails?: string;
 }
-
