@@ -55,11 +55,15 @@ export class OtpService {
       throw new BadRequestException('OTP session not found');
     }
 
-    const url = `https://2factor.in/API/V1/${process.env.TWOFACTOR_API_KEY}/SMS/VERIFY3/${record.providerSessionId}/${otp}`;
+    const url = `https://2factor.in/API/V1/${process.env.TWOFACTOR_API_KEY}/SMS/VERIFY/${record.providerSessionId}/${otp}`;
+
+    // console.log('Verifying OTP with URL:', url);
 
     const response: AxiosResponse<TwoFactorResponse> = await lastValueFrom(
       this.httpService.get(url),
     );
+
+    // console.log('OTP Verification Response:', response);
 
     if (response.data.Status !== 'Success') {
       throw new BadRequestException('Invalid or expired OTP');
