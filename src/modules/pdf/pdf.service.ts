@@ -8,219 +8,199 @@ export class PdfService {
   async generateInvoicePdf(
     invoiceData: any,
     weighmentSlipUrls: string[] = [],
+    stampImageUrl?: string,
   ): Promise<Buffer> {
     return new Promise(async (resolve, reject) => {
       try {
-        const doc = new PDFDocument({ margin: 50, size: 'A4' });
+        const doc = new PDFDocument({ margin: 40, size: 'A4' });
         const buffers: Buffer[] = [];
 
         doc.on('data', buffers.push.bind(buffers));
-        doc.on('end', () => {
-          const pdfBuffer = Buffer.concat(buffers);
-          resolve(pdfBuffer);
-        });
+        doc.on('end', () => resolve(Buffer.concat(buffers)));
         doc.on('error', reject);
 
-        // Header
-        doc
-          .fontSize(20)
-          .text('INVOICE', { align: 'center' })
-          .moveDown();
+        const pageWidth = doc.page.width - 80;
 
-        // Invoice Number and Date
-        doc
-          .fontSize(12)
-          .text(`Invoice Number: ${invoiceData.invoiceNumber}`, { align: 'left' })
-          .text(`Date: ${new Date(invoiceData.invoiceDate).toLocaleDateString()}`, { align: 'left' })
-          .moveDown();
-
-        // Supplier Details
-        doc
-          .fontSize(14)
-          .text('From:', { underline: true })
-          .fontSize(12)
-          .text(invoiceData.supplierName);
-        invoiceData.supplierAddress.forEach((line: string) => {
-          doc.text(line);
-        });
-        doc.text(`Place of Supply: ${invoiceData.placeOfSupply}`);
-        doc.moveDown();
-
-        // Bill To
-        doc
-          .fontSize(14)
-          .text('Bill To:', { underline: true })
-          .fontSize(12)
-          .text(invoiceData.billToName);
-        invoiceData.billToAddress.forEach((line: string) => {
-          doc.text(line);
-        });
-        doc.moveDown();
-
-        // Ship To
-        doc
-          .fontSize(14)
-          .text('Ship To:', { underline: true })
-          .fontSize(12)
-          .text(invoiceData.shipToName);
-        invoiceData.shipToAddress.forEach((line: string) => {
-          doc.text(line);
-        });
-        doc.moveDown();
-
-        // Terms
-        if (invoiceData.terms) {
-          doc.fontSize(12).text(`Terms: ${invoiceData.terms}`).moveDown();
-        }
-
-        // Vehicle Details
-        if (invoiceData.vehicleNumber || invoiceData.truck?.truckNumber) {
-          doc.fontSize(12).text('Vehicle Details:', { underline: true });
-          if (invoiceData.truck?.truckNumber) {
-            doc.text(`Truck Number: ${invoiceData.truck.truckNumber}`);
+        /* ---------- Utility: Card ---------- */
+        const drawCard = (
+          x: number,
+          y: number,
+          w: number,
+          h: number,
+          title?: string,
+        ) => {
+          doc.roundedRect(x, y, w, h, 6).strokeColor('#CCCCCC').lineWidth(1).stroke();
+          if (title) {
+            doc.fontSize(11).fillColor('#000').text(title, x + 10, y + 10);
           }
-          if (invoiceData.vehicleNumber) {
-            doc.text(`Vehicle Number: ${invoiceData.vehicleNumber}`);
-          }
-          doc.moveDown();
-        }
+        };
 
-        // Items Table Header
-        const tableTop = doc.y;
-        doc
-          .fontSize(10)
-          .text('Product', 50, tableTop)
-          .text('HSN', 200, tableTop)
-          .text('Qty', 280, tableTop)
-          .text('Rate', 320, tableTop, { align: 'right' })
-          .text('Amount', 400, tableTop, { align: 'right' })
-          .moveDown();
+        let y = 40;
 
-        // Item Row - handle productName which might be JSON string or array
-        let products: string[];
-        if (typeof invoiceData.productName === 'string') {
-          try {
-            products = JSON.parse(invoiceData.productName);
-          } catch {
-            products = [invoiceData.productName];
-          }
-        } else if (Array.isArray(invoiceData.productName)) {
-          products = invoiceData.productName;
-        } else {
-          products = [String(invoiceData.productName)];
-        }
-        const productName = products.join(', ');
+        /* ---------- HEADER ---------- */
+        doc.fontSize(14).font('Helvetica-Bold')
+          .text(`Supplier Name - ${invoiceData.supplierName}`, 40, y);
 
-        // Ensure values are Numbers before calling .toFixed()
+        doc.roundedRect(40, y + 28, 180, 20, 6)
+          .fillOpacity(0.08)
+          .fill('#000')
+          .fillOpacity(1);
+
+        doc.fontSize(10).fillColor('#000')
+          .text(`Place of Supply: ${invoiceData.placeOfSupply}`, 50, y + 32);
+
+        doc.fontSize(16).font('Helvetica-Bold')
+          .text('INVOICE', 0, y, { align: 'right' });
+
+        y += 70;
+
+        /* ---------- INVOICE META ---------- */
+        const metaY = y;
+        const boxHeight = 90;
+
+        drawCard(40, metaY, pageWidth / 2 - 10, boxHeight);
+
+        doc.fontSize(12).font('Helvetica-Bold')
+          .text(`Invoice Number : ${invoiceData.invoiceNumber}`, 55, metaY + 20)
+          .text(
+            `Invoice Date   : ${new Date(invoiceData.invoiceDate).toLocaleDateString('en-GB')}`,
+          )
+          .text(`Terms          : ${invoiceData.terms || 'CUSTOM'}`);
+
+        drawCard(40 + pageWidth / 2 + 10, metaY, pageWidth / 2 - 10, boxHeight);
+
+        doc.fontSize(12).font('Helvetica-Bold')
+          .text('Supplier Address', 40 + pageWidth / 2 + 25, metaY + 12);
+
+        doc.fontSize(10).font('Helvetica')
+          .text(
+            Array.isArray(invoiceData.supplierAddress)
+              ? invoiceData.supplierAddress.join('\n')
+              : String(invoiceData.supplierAddress),
+            40 + pageWidth / 2 + 25,
+            metaY + 30,
+          );
+
+          doc.fontSize(12).font('Helvetica').text(invoiceData.placeOfSupply, 55, y + 32);
+          
+        y = metaY + boxHeight + 20;
+
+        /* ---------- BILL TO / SHIP TO ---------- */
+        const cardHeight = 100;
+
+        drawCard(40, y, pageWidth / 2 - 10, cardHeight);
+        doc.fontSize(12).font('Helvetica-Bold').text('Bill To', 55, y + 12);
+        doc.fontSize(15).font('Helvetica-Bold').text(invoiceData.billToName, 55, y + 32);
+        doc.fontSize(12)
+          .text(
+            Array.isArray(invoiceData.billToAddress)
+              ? invoiceData.billToAddress.join('\n')
+              : String(invoiceData.billToAddress),
+            55,
+            y + 50,
+          );
+        doc.fontSize(12).font('Helvetica').text(invoiceData.placeOfSupply, 55, y + 32);
+
+        drawCard(40 + pageWidth / 2 + 10, y, pageWidth / 2 - 10, cardHeight);
+        doc.fontSize(12).font('Helvetica-Bold')
+          .text('Ship To', 40 + pageWidth / 2 + 25, y + 12);
+        doc.fontSize(15).font('Helvetica-Bold')
+          .text(invoiceData.shipToName, 40 + pageWidth / 2 + 25, y + 32);
+        doc.fontSize(12)
+          .text(
+            Array.isArray(invoiceData.shipToAddress)
+              ? invoiceData.shipToAddress.join('\n')
+              : String(invoiceData.shipToAddress),
+            40 + pageWidth / 2 + 25,
+            y + 50,
+          );
+
+        y += cardHeight + 25;
+
+        /* ---------- ITEMS TABLE ---------- */
+        const tableX = 40;
+        const tableY = y;
+        const col = [40, 70, 220, 320, 380, 450];
+
+        doc.roundedRect(tableX, tableY, pageWidth, 28, 4)
+          .fillOpacity(0.07)
+          .fill('#000')
+          .fillOpacity(1);
+
+        doc.fontSize(10).font('Helvetica-Bold')
+          .text('#', col[0], tableY + 8)
+          .text('Item & Description', col[1], tableY + 8)
+          .text('HSN/SAC', col[2], tableY + 8)
+          .text('Qty', col[3], tableY + 8)
+          .text('Rate', col[4], tableY + 8)
+          .text('Amount', col[5], tableY + 8);
+
+        const rowHeight = 34;
+        doc.rect(tableX, tableY + 28, pageWidth, rowHeight).strokeColor('#D0D0D0').stroke();
+
         const qty = Number(invoiceData.quantity || 0);
         const rate = Number(invoiceData.rate || 0);
         const amount = Number(invoiceData.amount || 0);
 
-        doc
-          .text(productName, 50)
-          .text(invoiceData.hsnCode || '-', 200)
-          .text(qty.toString(), 280) // Use safe variable
-          .text(rate.toFixed(2), 320, undefined, { align: 'right' }) // Use safe variable
-          .text(amount.toFixed(2), 400, undefined, { align: 'right' }) // Use safe variable
-          .moveDown();
+        doc.fontSize(10).font('Helvetica')
+          .text('1', col[0], tableY + 38)
+          .text(invoiceData.productName, col[1], tableY + 38)
+          .text(invoiceData.hsnCode || '-', col[2], tableY + 38)
+          .text(qty.toString(), col[3], tableY + 38)
+          .text(rate.toFixed(2), col[4], tableY + 38)
+          .text(amount.toFixed(2), col[5], tableY + 38);
 
-        // Total (Update this part too)
-        doc
-          .fontSize(12)
-          .text(`Total: ₹${amount.toFixed(2)}`, 350, doc.y, { align: 'right' })
-          .moveDown(2);
+        y = tableY + 28 + rowHeight + 25;
 
-        // Weighment Slip Note
-        if (invoiceData.weighmentSlipNote) {
-          doc
-            .fontSize(12)
-            .text('Weighment Slip Note:', { underline: true })
-            .fontSize(10)
-            .text(invoiceData.weighmentSlipNote)
-            .moveDown();
-        }
+        /* ---------- NOTES + SUBTOTAL ---------- */
+        const leftWidth = pageWidth * 0.62;
+        const rightWidth = pageWidth * 0.35;
 
-        // Weighment Slip Images
-        if (weighmentSlipUrls && weighmentSlipUrls.length > 0) {
-          doc
-            .fontSize(12)
-            .text('Weighment Slips:', { underline: true })
-            .moveDown();
+        drawCard(40, y, leftWidth, 120, 'Notes');
 
-          let yPosition = doc.y;
-          const imageWidth = 200;
-          const imageHeight = 150;
-          const imagesPerRow = 2;
-          const spacing = 20;
-
-          for (let i = 0; i < weighmentSlipUrls.length; i++) {
-            try {
-              // Download image
-              const response = await axios.get(weighmentSlipUrls[i], {
-                responseType: 'arraybuffer',
-              });
-              const imageBuffer = Buffer.from(response.data);
-
-              // Convert to JPEG if needed and resize
-              const processedImage = await sharp(imageBuffer)
-                .resize(imageWidth, imageHeight, {
-                  fit: 'inside',
-                  withoutEnlargement: true,
-                })
-                .jpeg({ quality: 85 })
-                .toBuffer();
-
-              // Calculate position
-              const col = i % imagesPerRow;
-              const row = Math.floor(i / imagesPerRow);
-              const x = 50 + col * (imageWidth + spacing);
-              yPosition = tableTop + 50 + row * (imageHeight + spacing);
-
-              // Check if we need a new page
-              if (yPosition + imageHeight > doc.page.height - 50) {
-                doc.addPage();
-                yPosition = 50;
-              }
-
-              // Add image to PDF
-              doc.image(processedImage, x, yPosition, {
-                width: imageWidth,
-                height: imageHeight,
-              });
-            } catch (error) {
-              console.error(`Error processing image ${i + 1}:`, error);
-              // Continue with next image if one fails
-            }
-          }
-
-          doc.y = yPosition + imageHeight + spacing;
-        }
-
-        // Claim Details
-        if (invoiceData.isClaim && invoiceData.claimDetails) {
-          doc
-            .fontSize(12)
-            .text('Claim Details:', { underline: true })
-            .fontSize(10)
-            .text(invoiceData.claimDetails)
-            .moveDown();
-        }
-
-        // Footer
-        doc
-          .fontSize(8)
+        doc.fontSize(9).font('Helvetica-Bold')
+          .text(`VEHICLE NO : ${invoiceData.vehicleNumber || '-'}`, 55, y + 30)
+          .text(`Per Nut Rate: ₹${rate.toFixed(2)}`, 55, y + 45)
           .text(
-            `Generated on ${new Date().toLocaleString()}`,
-            50,
-            doc.page.height - 50,
-            { align: 'center' },
+            `This vehicle is transporting ${invoiceData.productName} from Supplier: ${invoiceData.supplierName} to Buyer: ${invoiceData.billToName}.`,
+            55,
+            y + 65,
+            { width: leftWidth - 30 },
+          )
+          .text(
+            `In case of any accident, loss, or damage during transit, Buyer shall be treated as the insured person and will be entitled to receive all claim amounts for the damaged goods.`,
+            55,
+            y + 85,
+            { width: leftWidth - 30 },
           );
 
+        drawCard(40 + leftWidth + 20, y, rightWidth, 80);
+        doc.fontSize(12).font('Helvetica-Bold')
+          .text('Sub Total', 40 + leftWidth + 35, y + 20);
+        doc.fontSize(16)
+          .text(amount.toFixed(2), 40 + leftWidth + 35, y + 45);
+
+        y += 140;
+
+        /* ---------- WEIGHMENT SLIP ---------- */
+        doc.fontSize(11).font('Helvetica-Bold').text('Weightment Slip', 40, y);
+        y += 12;
+
+        drawCard(40, y, leftWidth, 300);
+
+        if (weighmentSlipUrls.length) {
+          const resp = await axios.get(weighmentSlipUrls[0], { responseType: 'arraybuffer' });
+          const img = await sharp(resp.data)
+            .resize(Math.round(leftWidth - 30), 270, { fit: 'inside' })
+            .jpeg({ quality: 90 })
+            .toBuffer();
+          doc.image(img, 55, y + 20, { width: leftWidth - 30 });
+        }
+
         doc.end();
-      } catch (error) {
-        reject(new BadRequestException(`PDF generation failed: ${error.message}`));
+      } catch (err: any) {
+        reject(new BadRequestException(`PDF generation failed: ${err?.message || err}`));
       }
     });
   }
 }
-
