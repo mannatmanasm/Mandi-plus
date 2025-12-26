@@ -292,6 +292,18 @@ export class PdfService {
           .font('Helvetica-Bold')
           .fillColor('#000000')
           .text('Notes', 50, y + 10);
+        
+        // Get the note and make it lowercase for easy checking
+        const note = (invoiceData.weighmentSlipNote || '').toLowerCase().trim();
+
+        // Lenient check: Does it contain "cash" or Hindi variations like "nakad", "nakat", "nagad"?
+        const isCash =
+          note.includes('cash') ||
+          note.includes('nak') ||  // Covers nakad, nakat, nakd
+          note.includes('nag');    // Covers nagad
+
+        // If Cash -> Buyer Name, Else -> Supplier Name
+        const insuredPerson = isCash ? invoiceData.billToName : invoiceData.supplierName;
 
         doc
           .fontSize(9)
@@ -316,7 +328,7 @@ export class PdfService {
             lineGap: 1,
           });
 
-        const notesText2 = `\nIn case of any accident, loss, or damage during transit, Buyer shall be treated as the insured person and will be entitled to receive all claim amounts for the damaged goods.`;
+        const notesText2 = `\nIn case of any accident, loss, or damage during transit, ${insuredPerson} shall be treated as the insured person and will be entitled to receive all claim amounts for the damaged goods.`;
         doc
           .fontSize(9)
           .font('Helvetica')
