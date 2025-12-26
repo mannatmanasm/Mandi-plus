@@ -28,7 +28,7 @@ export class InvoicesService {
 
   async create(
     createInvoiceDto: CreateInvoiceDto,
-    weighmentSlipFiles?: Express.Multer.File[],
+    weighmentSlipFiles?: any,
   ): Promise<Invoice> {
     // Check if invoice number already exists
     const existingInvoice = await this.invoiceRepository.findOne({
@@ -36,9 +36,7 @@ export class InvoicesService {
     });
 
     if (existingInvoice) {
-      throw new ConflictException(
-        'Invoice with this number already exists',
-      );
+      throw new ConflictException('Invoice with this number already exists');
     }
 
     // Handle truck by truck number - create if doesn't exist
@@ -63,13 +61,16 @@ export class InvoicesService {
     }
 
     // Upload weighment slip files if provided
-    let weighmentSlipUrls: string[] = [];
-    if (weighmentSlipFiles && weighmentSlipFiles.length > 0) {
-      weighmentSlipUrls = await this.storageService.uploadMultipleFiles(
+    let weighmentSlipUrls;
+    console.log('Weighment Slip Files:', weighmentSlipFiles);
+    if (weighmentSlipFiles) {
+      weighmentSlipUrls = await this.storageService.uploadMultipleFilesObj(
         weighmentSlipFiles,
         'weighment-slips',
       );
     }
+
+    console.log('Weighment Slip URLs:', weighmentSlipUrls);
 
     // Create invoice - handle productName array conversion to JSON string
     // Note: Database stores productName as varchar, so we JSON stringify the array
@@ -91,7 +92,8 @@ export class InvoicesService {
       amount: createInvoiceDto.amount,
       vehicleNumber: createInvoiceDto.vehicleNumber || null,
       weighmentSlipNote: createInvoiceDto.weighmentSlipNote || null,
-      weighmentSlipUrls: weighmentSlipUrls.length > 0 ? weighmentSlipUrls : null,
+      weighmentSlipUrls:
+        weighmentSlipUrls.length > 0 ? weighmentSlipUrls : null,
       isClaim: createInvoiceDto.isClaim || false,
       claimDetails: createInvoiceDto.claimDetails || null,
     };
@@ -102,7 +104,9 @@ export class InvoicesService {
 
     const invoice = this.invoiceRepository.create(invoiceData);
     const saveResult = await this.invoiceRepository.save(invoice);
-    const savedInvoice = (Array.isArray(saveResult) ? saveResult[0] : saveResult) as Invoice;
+    const savedInvoice = (
+      Array.isArray(saveResult) ? saveResult[0] : saveResult
+    ) as Invoice;
 
     // Queue PDF generation job
     await this.invoicePdfQueue.add('generate-pdf', {
@@ -161,9 +165,7 @@ export class InvoicesService {
       });
 
       if (existingInvoice) {
-        throw new ConflictException(
-          'Invoice with this number already exists',
-        );
+        throw new ConflictException('Invoice with this number already exists');
       }
     }
 
@@ -181,7 +183,7 @@ export class InvoicesService {
         });
         truck = await this.truckRepository.save(newTruck);
       }
-      
+
       invoice.truck = truck;
     }
 
@@ -191,7 +193,7 @@ export class InvoicesService {
         weighmentSlipFiles,
         'weighment-slips',
       );
-      
+
       // Merge with existing URLs
       const existingUrls = invoice.weighmentSlipUrls || [];
       invoice.weighmentSlipUrls = [...existingUrls, ...newUrls];
@@ -201,11 +203,11 @@ export class InvoicesService {
     // Remove truckNumber from updateData since we handle it separately above
     const { truckNumber, ...restUpdateData } = updateInvoiceDto;
     const updateData: any = { ...restUpdateData };
-    
+
     if (updateData.invoiceDate) {
       updateData.invoiceDate = new Date(updateData.invoiceDate);
     }
-    
+
     if (updateData.productName && Array.isArray(updateData.productName)) {
       updateData.productName = JSON.stringify(updateData.productName);
     }
@@ -226,4 +228,3 @@ export class InvoicesService {
     await this.invoiceRepository.remove(invoice);
   }
 }
-

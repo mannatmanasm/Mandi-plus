@@ -8,8 +8,10 @@ export class StorageService {
   private useCloudinary: boolean;
 
   constructor(private configService: ConfigService) {
-    this.useCloudinary = this.configService.get<string>('STORAGE_TYPE', 'cloudinary') === 'cloudinary';
-    
+    this.useCloudinary =
+      this.configService.get<string>('STORAGE_TYPE', 'cloudinary') ===
+      'cloudinary';
+
     if (this.useCloudinary) {
       cloudinary.config({
         cloud_name: this.configService.get<string>('CLOUDINARY_CLOUD_NAME'),
@@ -46,6 +48,30 @@ export class StorageService {
     return Promise.all(uploadPromises);
   }
 
+  async uploadMultipleFilesObj(
+    files: Express.Multer.File[] | Record<string, Express.Multer.File>,
+    folder: string = 'invoices',
+  ): Promise<string[]> {
+    if (!files) {
+      throw new BadRequestException('No files provided');
+    }
+
+    // 🔥 normalize object → array
+    const fileArray: Express.Multer.File[] = Array.isArray(files)
+      ? files
+      : Object.values(files);
+
+    if (fileArray.length === 0) {
+      throw new BadRequestException('No files provided');
+    }
+
+    const uploadPromises = fileArray.map((file) =>
+      this.uploadFile(file, folder),
+    );
+
+    return Promise.all(uploadPromises);
+  }
+
   private async uploadToCloudinary(
     file: Express.Multer.File,
     folder: string,
@@ -64,7 +90,9 @@ export class StorageService {
           } else if (result) {
             resolve(result.secure_url);
           } else {
-            reject(new BadRequestException('Upload failed: No result returned'));
+            reject(
+              new BadRequestException('Upload failed: No result returned'),
+            );
           }
         },
       );
@@ -82,7 +110,9 @@ export class StorageService {
   ): Promise<string> {
     // R2 implementation would go here if needed
     // For now, using Cloudinary as default
-    throw new BadRequestException('R2 storage not yet implemented. Please use Cloudinary.');
+    throw new BadRequestException(
+      'R2 storage not yet implemented. Please use Cloudinary.',
+    );
   }
 
   async uploadPdf(
@@ -113,11 +143,15 @@ export class StorageService {
         },
         (error, result) => {
           if (error) {
-            reject(new BadRequestException(`PDF upload failed: ${error.message}`));
+            reject(
+              new BadRequestException(`PDF upload failed: ${error.message}`),
+            );
           } else if (result) {
             resolve(result.secure_url);
           } else {
-            reject(new BadRequestException('PDF upload failed: No result returned'));
+            reject(
+              new BadRequestException('PDF upload failed: No result returned'),
+            );
           }
         },
       );
@@ -135,7 +169,8 @@ export class StorageService {
     folder: string,
   ): Promise<string> {
     // R2 implementation would go here if needed
-    throw new BadRequestException('R2 storage not yet implemented. Please use Cloudinary.');
+    throw new BadRequestException(
+      'R2 storage not yet implemented. Please use Cloudinary.',
+    );
   }
 }
-
