@@ -34,19 +34,19 @@ export class CreateInvoiceDto {
   @IsNotEmpty()
   supplierName: string;
 
-  @ApiProperty({ 
-    example: ['123 Main St', 'Mumbai, Maharashtra 400001'], 
-    description: 'Supplier address lines' 
+  @ApiProperty({
+    example: ['123 Main St', 'Mumbai, Maharashtra 400001'],
+    description: 'Supplier address lines'
   })
   //Allow string or JSON string to become Array
   @Transform(({ value }) => {
     if (typeof value === 'string') {
       // If it looks like JSON array "['Addr']", parse it. If regular string, wrap in array.
-      try { 
+      try {
         const parsed = JSON.parse(value);
         return Array.isArray(parsed) ? parsed : [value];
-      } catch { 
-        return [value]; 
+      } catch {
+        return [value];
       }
     }
     return value;
@@ -67,18 +67,18 @@ export class CreateInvoiceDto {
   @IsNotEmpty()
   billToName: string;
 
-  @ApiProperty({ 
-    example: ['456 Market St', 'Delhi 110001'], 
-    description: 'Bill to address lines' 
+  @ApiProperty({
+    example: ['456 Market St', 'Delhi 110001'],
+    description: 'Bill to address lines'
   })
   // Allow string or JSON string to become Array
   @Transform(({ value }) => {
     if (typeof value === 'string') {
-      try { 
+      try {
         const parsed = JSON.parse(value);
         return Array.isArray(parsed) ? parsed : [value];
-      } catch { 
-        return [value]; 
+      } catch {
+        return [value];
       }
     }
     return value;
@@ -93,18 +93,18 @@ export class CreateInvoiceDto {
   @IsNotEmpty()
   shipToName: string;
 
-  @ApiProperty({ 
-    example: ['456 Market St', 'Delhi 110001'], 
-    description: 'Ship to address lines' 
+  @ApiProperty({
+    example: ['456 Market St', 'Delhi 110001'],
+    description: 'Ship to address lines'
   })
   // Allow string or JSON string to become Array
   @Transform(({ value }) => {
     if (typeof value === 'string') {
-      try { 
+      try {
         const parsed = JSON.parse(value);
         return Array.isArray(parsed) ? parsed : [value];
-      } catch { 
-        return [value]; 
+      } catch {
+        return [value];
       }
     }
     return value;
@@ -115,23 +115,18 @@ export class CreateInvoiceDto {
   shipToAddress: string[];
 
   // Item details
-  @ApiProperty({ example: ['Wheat', 'Rice'], description: 'Product names' })
-  //  Allow string or JSON string to become Array
+  @ApiProperty({ example: 'Wheat', description: 'Product name' })
   @Transform(({ value }) => {
-    if (typeof value === 'string') {
-      try { 
-        const parsed = JSON.parse(value);
-        return Array.isArray(parsed) ? parsed : [value];
-      } catch { 
-        return [value]; 
-      }
-    }
-    return value;
+    // If it's already a string, return as is
+    if (typeof value === 'string') return value;
+    // If it's an array, return the first element
+    if (Array.isArray(value)) return value[0] || '';
+    // For any other case, return empty string
+    return '';
   })
-  @IsArray()
-  @ArrayMinSize(1)
-  @IsString({ each: true })
-  productName: string[];
+  @IsString()
+  @IsNotEmpty()
+  productName: string;
 
   @ApiPropertyOptional({ example: '1001', description: 'HSN code' })
   @IsString()

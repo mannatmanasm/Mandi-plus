@@ -226,19 +226,23 @@ export class PdfService {
         const tableY = y;
         const tableWidth = pageWidth;
 
-        // Column positions - adjusted to match PDF exactly
+        // Column positions with more space for Amount and better distribution
         const cols = {
           hash: tableX + 8,
           item: tableX + 30,
-          hsn: tableX + 270,
-          qty: tableX + 350,
-          rate: tableX + 410,
-          amount: tableX + 470,
+          hsn: tableX + 200,    // Reduced from 260
+          qty: tableX + 280,    // Adjusted
+          rate: tableX + 330,   // Adjusted
+          amount: tableX + 410  // More space for amount to fit in one line
         };
 
-        // Table header - light gray background
+        // Header height increased slightly
+        const headerHeight = 24;
+        const rowHeight = 30;
+
+        // ---------- TABLE HEADER ----------
         doc
-          .rect(tableX, tableY, tableWidth, 20)
+          .rect(tableX, tableY, tableWidth, headerHeight)
           .fillAndStroke('#F0F0F0', '#000000')
           .lineWidth(0.5);
 
@@ -246,17 +250,18 @@ export class PdfService {
           .fontSize(11)
           .font('Helvetica-Bold')
           .fillColor('#000000')
-          .text('#', cols.hash, tableY + 6)
-          .text('Item & Description', cols.item, tableY + 6)
-          .text('HSN/SAC', cols.hsn, tableY + 6)
-          .text('Qty', cols.qty, tableY + 6)
-          .text('Rate', cols.rate, tableY + 6)
-          .text('Amount', cols.amount, tableY + 6);
+          .text('#', cols.hash, tableY + 7)
+          .text('Item & Description', cols.item, tableY + 7)
+          .text('HSN/SAC', cols.hsn, tableY + 7)
+          .text('Qty', cols.qty, tableY + 7)
+          .text('Rate', cols.rate, tableY + 7)
+          .text('Amount', cols.amount, tableY + 7);
 
-        // Table row
-        const rowY = tableY + 20;
+        // ---------- TABLE ROW ----------
+        const rowY = tableY + headerHeight;
+
         doc
-          .rect(tableX, rowY, tableWidth, 25)
+          .rect(tableX, rowY, tableWidth, rowHeight)
           .strokeColor('#000000')
           .lineWidth(0.5)
           .stroke();
@@ -265,18 +270,29 @@ export class PdfService {
         const rate = Number(invoiceData.rate || 0);
         const amount = Number(invoiceData.amount || 0);
 
+        // Handle product name whether it's an array or string
+        const productName = Array.isArray(invoiceData.productName)
+          ? invoiceData.productName[0]  // Take first element if it's an array
+          : invoiceData.productName;    // Use as is if it's a string
+
+        // IMPORTANT: width + no wrapping for Amount
         doc
           .fontSize(11)
           .font('Helvetica')
           .fillColor('#000000')
-          .text('1', cols.hash, rowY + 8)
-          .text(invoiceData.productName, cols.item, rowY + 8)
-          .text(invoiceData.hsnCode || '-', cols.hsn, rowY + 8)
-          .text(qty.toString(), cols.qty, rowY + 8)
-          .text(rate.toFixed(2), cols.rate, rowY + 8)
-          .text(amount.toFixed(2), cols.amount, rowY + 8);
+          .text('1', cols.hash, rowY + 9)
+          .text(productName, cols.item, rowY + 9, { width: cols.hsn - cols.item - 10 }) // Wrap long product names
+          .text(invoiceData.hsnCode || '-', cols.hsn, rowY + 9)
+          .text(qty.toString(), cols.qty, rowY + 9)
+          .text(rate.toFixed(2), cols.rate, rowY + 9)
+          .text(amount.toFixed(2), cols.amount, rowY + 9, {
+            width: 100,  // Fixed width for amount
+            align: 'left',
+            lineBreak: false
+          });
 
-        y = rowY + 25 + 15;
+        // Move cursor down
+        y = rowY + rowHeight + 15;
 
         /* ---------- NOTES WITH BOX ---------- */
         const notesBoxHeight = 125;
@@ -292,7 +308,7 @@ export class PdfService {
           .font('Helvetica-Bold')
           .fillColor('#000000')
           .text('Notes', 50, y + 10);
-        
+
         // Get the note and make it lowercase for easy checking
         const note = (invoiceData.weighmentSlipNote || '').toLowerCase().trim();
 
@@ -315,9 +331,13 @@ export class PdfService {
           .fontSize(9)
           .font('Helvetica-Bold')
           .fillColor('#000000')
-          .text(`Per Nut Rate: ₹${rate.toFixed(2)}`, 50, y + 38);
+          .text(`Per Nut Rate: Rs.${rate.toFixed(2)}`, 50, y + 38);
 
-        const notesText1 = `This vehicle is transporting ${invoiceData.productName} from Supplier: ${invoiceData.supplierName} to Buyer: ${invoiceData.billToName}.`;
+        const productNameForNotes = Array.isArray(invoiceData.productName)
+          ? invoiceData.productName[0]
+          : invoiceData.productName;
+
+        const notesText1 = `This vehicle is transporting ${productNameForNotes} from Supplier: ${invoiceData.supplierName} to Buyer: ${invoiceData.billToName}.`;
         doc
           .fontSize(9)
           .font('Helvetica')
@@ -372,12 +392,12 @@ export class PdfService {
 
         y += 5;
 
-        // Authorized Signature on the right
-        doc
-          .fontSize(9)
-          .font('Helvetica')
-          .fillColor('#000000')
-          .text('Authorized Signature', 445, y);
+        // // Authorized Signature on the right
+        // doc
+        //   .fontSize(9)
+        //   .font('Helvetica')
+        //   .fillColor('#000000')
+        //   .text('Authorized Signature', 445, y);
 
         y += 10;
 

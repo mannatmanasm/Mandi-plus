@@ -24,7 +24,7 @@ export class InvoicesService {
     @InjectQueue('invoice-pdf')
     private readonly invoicePdfQueue: Queue,
     private readonly storageService: StorageService,
-  ) {}
+  ) { }
 
   async create(
     createInvoiceDto: CreateInvoiceDto,
@@ -72,8 +72,12 @@ export class InvoicesService {
 
     console.log('Weighment Slip URLs:', weighmentSlipUrls);
 
-    // Create invoice - handle productName array conversion to JSON string
-    // Note: Database stores productName as varchar, so we JSON stringify the array
+    // Ensure productName is a string (handle both string and array cases)
+    const productName = Array.isArray(createInvoiceDto.productName)
+      ? createInvoiceDto.productName[0] // Take first element if it's an array
+      : createInvoiceDto.productName;  // Use as is if it's a string
+
+    // Create invoice with proper productName handling
     const invoiceData: any = {
       invoiceNumber: createInvoiceDto.invoiceNumber,
       invoiceDate: new Date(createInvoiceDto.invoiceDate),
@@ -85,15 +89,14 @@ export class InvoicesService {
       billToAddress: createInvoiceDto.billToAddress,
       shipToName: createInvoiceDto.shipToName,
       shipToAddress: createInvoiceDto.shipToAddress,
-      productName: JSON.stringify(createInvoiceDto.productName), // Store array as JSON string
+      productName: productName, // Store as plain string
       hsnCode: createInvoiceDto.hsnCode || null,
       quantity: createInvoiceDto.quantity,
       rate: createInvoiceDto.rate,
       amount: createInvoiceDto.amount,
       vehicleNumber: createInvoiceDto.vehicleNumber || null,
       weighmentSlipNote: createInvoiceDto.weighmentSlipNote || null,
-      weighmentSlipUrls:
-        weighmentSlipUrls.length > 0 ? weighmentSlipUrls : null,
+      weighmentSlipUrls: weighmentSlipUrls?.length > 0 ? weighmentSlipUrls : null,
       isClaim: createInvoiceDto.isClaim || false,
       claimDetails: createInvoiceDto.claimDetails || null,
     };
