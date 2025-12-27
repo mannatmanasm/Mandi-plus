@@ -8,11 +8,12 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
         connection: {
-          host: configService.get<string>('REDIS_HOST', 'localhost'),
-          port: configService.get<number>('REDIS_PORT', 6379),
+          host: configService.get<string>('REDIS_HOST'),
+          port: configService.get<number>('REDIS_PORT'),
           password: configService.get<string>('REDIS_PASSWORD'),
-          tls:
-            configService.get<string>('REDIS_TLS') === 'true' ? {} : undefined,
+          tls: {
+            servername: configService.get<string>('REDIS_HOST'),
+          },
         },
       }),
       inject: [ConfigService],
