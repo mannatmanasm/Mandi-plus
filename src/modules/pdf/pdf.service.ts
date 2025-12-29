@@ -3,6 +3,8 @@ import PDFDocument from 'pdfkit';
 import axios from 'axios';
 import sharp from 'sharp';
 
+const MANDI_PLUS_LOGO_URL = 'https://res.cloudinary.com/dur7vlvdw/image/upload/v1766996140/mandiPlusLogo_glmnlu.png';
+
 @Injectable()
 export class PdfService {
   async generateInvoicePdf(
@@ -12,35 +14,55 @@ export class PdfService {
   ): Promise<Buffer> {
     return new Promise(async (resolve, reject) => {
       try {
-        const doc = new PDFDocument({ margin: 40, size: 'A4' });
+        const margin = 40;
+        const doc = new PDFDocument({ margin: margin, size: 'A4' });
         const buffers: Buffer[] = [];
 
         doc.on('data', buffers.push.bind(buffers));
         doc.on('end', () => resolve(Buffer.concat(buffers)));
         doc.on('error', reject);
 
-        const pageWidth = doc.page.width - 80; // 515 points
-        let y = 50;
+        const pageWidth = doc.page.width - (margin * 2);
+        const rightEdgeX = margin + pageWidth;
 
-        /* ---------- HEADER ---------- */
-        // Supplier Name - left aligned
-        doc
-          .fontSize(14)
-          .font('Helvetica-Bold')
-          .fillColor('#000000')
-          .text(`Supplier Name - ${invoiceData.supplierName}`, 40, y);
+        // --- HEADER SECTION (Logo Left, Invoice Box Right) ---
+        const HEADER_Y = margin;
+        let headerBottomY = HEADER_Y;
 
-        // Place of Supply - below supplier name
-        doc
-          .fontSize(11)
-          .font('Helvetica')
-          .fillColor('#000000')
-          .text(`Place of Supply: ${invoiceData.placeOfSupply}`, 40, y + 16);
+        /* 1. LOGO (Top Left - Bigger) */
+        const LOGO_WIDTH = 140; // Increased size
 
-        // INVOICE - right aligned with dashed border
-        const invoiceBoxX = 40 + pageWidth - 100;
+        try {
+          const logoResp = await axios.get(MANDI_PLUS_LOGO_URL, {
+            responseType: 'arraybuffer',
+          });
+
+          const logoImg = await sharp(logoResp.data)
+            .resize(LOGO_WIDTH * 4, null) // High DPI
+            .toBuffer();
+
+          const LOGO_Y = HEADER_Y - 45;
+          doc.image(logoImg, margin, LOGO_Y, { width: LOGO_WIDTH });
+
+          // Estimate height based on width (approx 3:1 ratio)
+          headerBottomY = HEADER_Y + 45;
+        } catch (logoErr) {
+          console.warn('Could not load MandiPlus logo:', logoErr.message);
+          doc
+            .fontSize(20)
+            .font('Helvetica-Bold')
+            .fillColor('#4309ac')
+            .text('MandiPlus', margin, HEADER_Y);
+          headerBottomY = HEADER_Y + 25;
+        }
+
+        /* 2. INVOICE BOX (Top Right - Bigger) */
+        const INVOICE_BOX_W = 120;
+        const INVOICE_BOX_H = 35;
+        const INVOICE_BOX_X = rightEdgeX - INVOICE_BOX_W;
+
         doc
-          .roundedRect(invoiceBoxX, y, 100, 35, 3)
+          .roundedRect(INVOICE_BOX_X, HEADER_Y, INVOICE_BOX_W, INVOICE_BOX_H, 3)
           .dash(3, { space: 2 })
           .strokeColor('#000000')
           .lineWidth(0.5)
@@ -48,208 +70,129 @@ export class PdfService {
           .undash();
 
         doc
-          .fontSize(17)
+          .fontSize(14)
           .font('Helvetica-Bold')
           .fillColor('#000000')
-          .text('INVOICE', invoiceBoxX + 10, y + 10, {
-            width: 80,
+          // Center text: Y + (BoxHeight - FontHeight) / 2
+          .text('INVOICE', INVOICE_BOX_X, HEADER_Y + 10, {
+            width: INVOICE_BOX_W,
             align: 'center',
           });
 
-        y += 50;
+        // Ensure header bottom accommodates the box height if logo is small
+        headerBottomY = Math.max(headerBottomY, HEADER_Y + INVOICE_BOX_H);
 
-        /* ---------- HORIZONTAL LINE ---------- */
+        // --- HORIZONTAL LINE ---
+        let y = headerBottomY + 20;
+
         doc
-          .moveTo(40, y)
-          .lineTo(40 + pageWidth, y)
+          .moveTo(margin, y)
+          .lineTo(rightEdgeX, y)
           .strokeColor('#000000')
           .lineWidth(0.5)
           .stroke();
 
         y += 15;
 
-        /* ---------- TWO COLUMN SECTION WITH BOXES ---------- */
-        const leftColX = 40;
+        /* ---------- GRID: INVOICE DETAILS (LEFT) & SUPPLIER DETAILS (RIGHT) ---------- */
+        const leftColX = margin;
         const rightColX = 320;
         const startY = y;
-        const boxHeight = 70;
+        const boxHeight = 90; // Increased height to fit Supplier Name/Place
 
-        // LEFT BOX - Invoice Details
+        // --- LEFT BOX: Invoice Details ---
         doc
           .roundedRect(leftColX, startY, 270, boxHeight, 5)
           .strokeColor('#CCCCCC')
           .lineWidth(0.5)
           .stroke();
 
-        doc
-          .fontSize(11)
-          .font('Helvetica-Bold')
-          .fillColor('#000000')
+        doc.fontSize(11).font('Helvetica-Bold').fillColor('#000000')
           .text('Invoice Number :', leftColX + 15, startY + 12);
-        doc
-          .fontSize(11)
-          .font('Helvetica-Bold')
-          .text(invoiceData.invoiceNumber, leftColX + 105, startY + 12);
+        doc.text(invoiceData.invoiceNumber, leftColX + 105, startY + 12);
 
-        doc
-          .fontSize(11)
-          .font('Helvetica-Bold')
-          .fillColor('#000000')
-          .text('Invoice Date', leftColX + 15, startY + 27);
-        doc
-          .fontSize(11)
-          .font('Helvetica-Bold')
-          .text(':', leftColX + 105, startY + 27);
-        doc
-          .fontSize(11)
-          .font('Helvetica-Bold')
-          .text(
-            new Date(invoiceData.invoiceDate).toLocaleDateString('en-GB'),
-            leftColX + 110,
-            startY + 27,
-          );
+        doc.text('Invoice Date', leftColX + 15, startY + 27);
+        doc.text(':', leftColX + 105, startY + 27);
+        doc.text(new Date(invoiceData.invoiceDate).toLocaleDateString('en-GB'), leftColX + 110, startY + 27);
 
-        doc
-          .fontSize(11)
-          .font('Helvetica-Bold')
-          .fillColor('#000000')
-          .text('Terms', leftColX + 15, startY + 42);
-        doc
-          .fontSize(11)
-          .font('Helvetica-Bold')
-          .text(':', leftColX + 105, startY + 42);
-        doc
-          .fontSize(11)
-          .font('Helvetica-Bold')
-          .text(invoiceData.terms || 'CUSTOM', leftColX + 110, startY + 42);
+        doc.text('Terms', leftColX + 15, startY + 42);
+        doc.text(':', leftColX + 105, startY + 42);
+        doc.text(invoiceData.terms || 'CUSTOM', leftColX + 110, startY + 42);
 
-        // RIGHT BOX - Supplier Address
+        // --- RIGHT BOX: Supplier Details (Name, Address, Place) ---
         doc
           .roundedRect(rightColX, startY, 235, boxHeight, 5)
           .strokeColor('#CCCCCC')
           .lineWidth(0.5)
           .stroke();
 
-        doc
-          .fontSize(11)
-          .font('Helvetica-Bold')
-          .fillColor('#000000')
-          .text('Supplier Address', rightColX + 15, startY + 12);
+        // Title
+        doc.fontSize(9).font('Helvetica-Bold').fillColor('#666666')
+          .text('Supplier Details', rightColX + 15, startY + 8);
 
-        doc
-          .fontSize(11)
-          .font('Helvetica')
-          .fillColor('#000000')
-          .text(
-            Array.isArray(invoiceData.supplierAddress)
-              ? invoiceData.supplierAddress.join('\n')
-              : String(invoiceData.supplierAddress),
-            rightColX + 15,
-            startY + 25,
-            { width: 205, lineGap: 2 },
-          );
+        // Supplier Name (Bold)
+        doc.fontSize(12).font('Helvetica-Bold').fillColor('#000000')
+          .text(`Supplier Name: ${invoiceData.supplierName}`, rightColX + 15, startY + 22);
+
+        // Supplier Address (Regular)
+        const addressY = startY + 38;
+        // doc.fontSize(10).font('Helvetica').fillColor('#000000')
+        //   .text(
+        //     Array.isArray(invoiceData.supplierAddress)
+        //       ? invoiceData.supplierAddress.join(', ')
+        //       : String(invoiceData.supplierAddress),
+        //     rightColX + 15,
+        //     addressY,
+        //     { width: 205, lineGap: 2 }
+        //   );
+
+        // Calculate where address ends to place "Place of Supply" below it
+        // const addressHeight = doc.heightOfString(
+        //   Array.isArray(invoiceData.supplierAddress) ? invoiceData.supplierAddress.join(', ') : String(invoiceData.supplierAddress),
+        //   { width: 205 }
+        // );
+
+        // Place of Supply
+        doc.fontSize(10).font('Helvetica-Bold')
+          .text(`Place of Supply: ${invoiceData.placeOfSupply}`, rightColX + 15, startY + 38 + 2);
+
 
         y = startY + boxHeight + 15;
 
-        /* ---------- BILL TO / SHIP TO WITH BOXES ---------- */
+        /* ---------- BILL TO / SHIP TO ---------- */
         const billShipY = y;
         const billShipBoxHeight = 75;
 
-        // Bill To Box - Left
-        doc
-          .roundedRect(leftColX, billShipY, 270, billShipBoxHeight, 5)
-          .strokeColor('#CCCCCC')
-          .lineWidth(0.5)
-          .stroke();
+        // Bill To
+        doc.roundedRect(leftColX, billShipY, 270, billShipBoxHeight, 5).strokeColor('#CCCCCC').lineWidth(0.5).stroke();
+        doc.fontSize(11).font('Helvetica').fillColor('#000000').text('Bill To', leftColX + 15, billShipY + 12);
+        doc.fontSize(11).font('Helvetica-Bold').text(invoiceData.billToName, leftColX + 15, billShipY + 25);
+        doc.fontSize(11).font('Helvetica').text(
+          Array.isArray(invoiceData.billToAddress) ? invoiceData.billToAddress.join('\n') : String(invoiceData.billToAddress),
+          leftColX + 15, billShipY + 40, { width: 240, lineGap: 2 }
+        );
 
-        doc
-          .fontSize(11)
-          .font('Helvetica')
-          .fillColor('#000000')
-          .text('Bill To', leftColX + 15, billShipY + 12);
-
-        doc
-          .fontSize(11)
-          .font('Helvetica-Bold')
-          .fillColor('#000000')
-          .text(invoiceData.billToName, leftColX + 15, billShipY + 25);
-
-        doc
-          .fontSize(11)
-          .font('Helvetica')
-          .fillColor('#000000')
-          .text(
-            Array.isArray(invoiceData.billToAddress)
-              ? invoiceData.billToAddress.join('\n')
-              : String(invoiceData.billToAddress),
-            leftColX + 15,
-            billShipY + 40,
-            { width: 240, lineGap: 2 },
-          );
-
-        // Ship To Box - Right
-        doc
-          .roundedRect(rightColX, billShipY, 235, billShipBoxHeight, 5)
-          .strokeColor('#CCCCCC')
-          .lineWidth(0.5)
-          .stroke();
-
-        doc
-          .fontSize(11)
-          .font('Helvetica')
-          .fillColor('#000000')
-          .text('Ship To', rightColX + 15, billShipY + 12);
-
-        doc
-          .fontSize(11)
-          .font('Helvetica-Bold')
-          .fillColor('#000000')
-          .text(invoiceData.shipToName, rightColX + 15, billShipY + 25);
-
-        doc
-          .fontSize(11)
-          .font('Helvetica')
-          .fillColor('#000000')
-          .text(
-            Array.isArray(invoiceData.shipToAddress)
-              ? invoiceData.shipToAddress.join('\n')
-              : String(invoiceData.shipToAddress),
-            rightColX + 15,
-            billShipY + 40,
-            { width: 205, lineGap: 2 },
-          );
+        // Ship To
+        doc.roundedRect(rightColX, billShipY, 235, billShipBoxHeight, 5).strokeColor('#CCCCCC').lineWidth(0.5).stroke();
+        doc.fontSize(11).font('Helvetica').text('Ship To', rightColX + 15, billShipY + 12);
+        doc.fontSize(11).font('Helvetica-Bold').text(invoiceData.shipToName, rightColX + 15, billShipY + 25);
+        doc.fontSize(11).font('Helvetica').text(
+          Array.isArray(invoiceData.shipToAddress) ? invoiceData.shipToAddress.join('\n') : String(invoiceData.shipToAddress),
+          rightColX + 15, billShipY + 40, { width: 205, lineGap: 2 }
+        );
 
         y = billShipY + billShipBoxHeight + 15;
 
         /* ---------- ITEMS TABLE ---------- */
-        const tableX = 40;
+        const tableX = margin;
         const tableY = y;
         const tableWidth = pageWidth;
-
-        // Column positions with more space for Amount and better distribution
-        const cols = {
-          hash: tableX + 8,
-          item: tableX + 30,
-          hsn: tableX + 200,    // Reduced from 260
-          qty: tableX + 280,    // Adjusted
-          rate: tableX + 330,   // Adjusted
-          amount: tableX + 410  // More space for amount to fit in one line
-        };
-
-        // Header height increased slightly
+        const cols = { hash: tableX + 8, item: tableX + 30, hsn: tableX + 200, qty: tableX + 280, rate: tableX + 330, amount: tableX + 410 };
         const headerHeight = 24;
         const rowHeight = 30;
 
-        // ---------- TABLE HEADER ----------
-        doc
-          .rect(tableX, tableY, tableWidth, headerHeight)
-          .fillAndStroke('#F0F0F0', '#000000')
-          .lineWidth(0.5);
-
-        doc
-          .fontSize(11)
-          .font('Helvetica-Bold')
-          .fillColor('#000000')
+        doc.rect(tableX, tableY, tableWidth, headerHeight).fillAndStroke('#F0F0F0', '#000000').lineWidth(0.5);
+        doc.fontSize(11).font('Helvetica-Bold').fillColor('#000000')
           .text('#', cols.hash, tableY + 7)
           .text('Item & Description', cols.item, tableY + 7)
           .text('HSN/SAC', cols.hsn, tableY + 7)
@@ -257,186 +200,132 @@ export class PdfService {
           .text('Rate', cols.rate, tableY + 7)
           .text('Amount', cols.amount, tableY + 7);
 
-        // ---------- TABLE ROW ----------
         const rowY = tableY + headerHeight;
-
-        doc
-          .rect(tableX, rowY, tableWidth, rowHeight)
-          .strokeColor('#000000')
-          .lineWidth(0.5)
-          .stroke();
+        doc.rect(tableX, rowY, tableWidth, rowHeight).strokeColor('#000000').lineWidth(0.5).stroke();
 
         const qty = Number(invoiceData.quantity || 0);
         const rate = Number(invoiceData.rate || 0);
         const amount = Number(invoiceData.amount || 0);
+        const productName = Array.isArray(invoiceData.productName) ? invoiceData.productName[0] : invoiceData.productName;
 
-        // Handle product name whether it's an array or string
-        const productName = Array.isArray(invoiceData.productName)
-          ? invoiceData.productName[0]  // Take first element if it's an array
-          : invoiceData.productName;    // Use as is if it's a string
-
-        // IMPORTANT: width + no wrapping for Amount
-        doc
-          .fontSize(11)
-          .font('Helvetica')
-          .fillColor('#000000')
+        doc.fontSize(11).font('Helvetica').fillColor('#000000')
           .text('1', cols.hash, rowY + 9)
-          .text(productName, cols.item, rowY + 9, { width: cols.hsn - cols.item - 10 }) // Wrap long product names
+          .text(productName, cols.item, rowY + 9, { width: cols.hsn - cols.item - 10 })
           .text(invoiceData.hsnCode || '-', cols.hsn, rowY + 9)
           .text(qty.toString(), cols.qty, rowY + 9)
           .text(rate.toFixed(2), cols.rate, rowY + 9)
-          .text(amount.toFixed(2), cols.amount, rowY + 9, {
-            width: 100,  // Fixed width for amount
-            align: 'left',
-            lineBreak: false
-          });
+          .text(amount.toFixed(2), cols.amount, rowY + 9, { width: 100, align: 'left', lineBreak: false });
 
-        // Move cursor down
         y = rowY + rowHeight + 15;
 
-        /* ---------- NOTES WITH BOX ---------- */
+        /* ---------- NOTES ---------- */
         const notesBoxHeight = 125;
+        doc.roundedRect(margin, y, 360, notesBoxHeight, 5).strokeColor('#CCCCCC').lineWidth(0.5).stroke();
+        doc.fontSize(9).font('Helvetica-Bold').fillColor('#000000').text('Notes', margin + 10, y + 10);
 
-        doc
-          .roundedRect(40, y, 360, notesBoxHeight, 5)
-          .strokeColor('#CCCCCC')
-          .lineWidth(0.5)
-          .stroke();
-
-        doc
-          .fontSize(9)
-          .font('Helvetica-Bold')
-          .fillColor('#000000')
-          .text('Notes', 50, y + 10);
-
-        // Get the note and make it lowercase for easy checking
         const note = (invoiceData.weighmentSlipNote || '').toLowerCase().trim();
-
-        // Lenient check: Does it contain "cash" or Hindi variations like "nakad", "nakat", "nagad"?
-        const isCash =
-          note.includes('cash') ||
-          note.includes('nak') ||  // Covers nakad, nakat, nakd
-          note.includes('nag');    // Covers nagad
-
-        // If Cash -> Buyer Name, Else -> Supplier Name
+        const isCash = note.includes('cash') || note.includes('nak') || note.includes('nag');
         const insuredPerson = isCash ? invoiceData.billToName : invoiceData.supplierName;
 
-        doc
-          .fontSize(9)
-          .font('Helvetica-Bold')
-          .fillColor('#000000')
-          .text(`VEHICLE NO : ${invoiceData.vehicleNumber || '-'}`, 50, y + 25);
+        doc.text(`VEHICLE NO : ${invoiceData.vehicleNumber || '-'}`, margin + 10, y + 25);
+        doc.text(`Per Nut Rate: Rs.${rate.toFixed(2)}`, margin + 10, y + 38);
 
-        doc
-          .fontSize(9)
-          .font('Helvetica-Bold')
-          .fillColor('#000000')
-          .text(`Per Nut Rate: Rs.${rate.toFixed(2)}`, 50, y + 38);
+        const productNameForNotes = Array.isArray(invoiceData.productName) ? invoiceData.productName[0] : invoiceData.productName;
+        doc.fontSize(9).font('Helvetica').text(
+          `This vehicle is transporting ${productNameForNotes} from Supplier: ${invoiceData.supplierName} to Buyer: ${invoiceData.billToName}.`,
+          margin + 10, y + 56, { width: 300, align: 'left', lineGap: 1 }
+        );
+        doc.text(
+          `\nIn case of any accident, loss, or damage during transit, ${insuredPerson} shall be treated as the insured person and will be entitled to receive all claim amounts for the damaged goods.`,
+          margin + 10, y + 74, { width: 300, align: 'left', lineGap: 2 }
+        );
 
-        const productNameForNotes = Array.isArray(invoiceData.productName)
-          ? invoiceData.productName[0]
-          : invoiceData.productName;
-
-        const notesText1 = `This vehicle is transporting ${productNameForNotes} from Supplier: ${invoiceData.supplierName} to Buyer: ${invoiceData.billToName}.`;
-        doc
-          .fontSize(9)
-          .font('Helvetica')
-          .fillColor('#000000')
-          .text(notesText1, 50, y + 56, {
-            width: 300,
-            align: 'left',
-            lineGap: 1,
-          });
-
-        const notesText2 = `\nIn case of any accident, loss, or damage during transit, ${insuredPerson} shall be treated as the insured person and will be entitled to receive all claim amounts for the damaged goods.`;
-        doc
-          .fontSize(9)
-          .font('Helvetica')
-          .fillColor('#000000')
-          .text(notesText2, 50, y + 74, {
-            width: 300,
-            align: 'left',
-            lineGap: 2,
-          });
-
-        // Sub Total Box on the right
+        // Sub Total
         const subTotalX = 410;
-        const subTotalBoxHeight = 60;
-
-        doc
-          .roundedRect(subTotalX, y, 145, subTotalBoxHeight, 5)
-          .strokeColor('#CCCCCC')
-          .lineWidth(0.5)
-          .stroke();
-
-        doc
-          .fontSize(10)
-          .font('Helvetica-Bold')
-          .fillColor('#000000')
-          .text('Sub Total', subTotalX + 10, y + 15);
-
-        doc
-          .fontSize(12)
-          .font('Helvetica-Bold')
-          .fillColor('#000000')
-          .text(amount.toFixed(2), subTotalX + 10, y + 33);
+        doc.roundedRect(subTotalX, y, 145, 60, 5).strokeColor('#CCCCCC').lineWidth(0.5).stroke();
+        doc.fontSize(10).font('Helvetica-Bold').text('Sub Total', subTotalX + 10, y + 15);
+        doc.fontSize(12).text(amount.toFixed(2), subTotalX + 10, y + 33);
 
         y += notesBoxHeight + 25;
 
-        /* ---------- WEIGHMENT SLIP WITH BOX ---------- */
+        /* ---------- WEIGHMENT SLIP & TERMS AND CONDITIONS (Halves) ---------- */
+
+        // Define Columns
+        const GAP = 15;
+        const COL_WIDTH = (pageWidth - GAP) / 2; // Split width into two equal parts
+
+        // Left Column Coordinates
+        const LEFT_COL_X = margin;
+        // Right Column Coordinates
+        const RIGHT_COL_X = margin + COL_WIDTH + GAP;
+
+        const SECTION_HEIGHT = 200; // Fixed height for both boxes
+
+        // --- 1. WEIGHMENT SLIP (Left Half) ---
+        doc.fontSize(9).font('Helvetica-Bold').fillColor('#000000')
+          .text('Weightment Slip', LEFT_COL_X, y);
+
+        const boxStartY = y + 15;
+
         doc
-          .fontSize(9)
-          .font('Helvetica-Bold')
-          .fillColor('#000000')
-          .text('Weightment Slip', 40, y);
-
-        y += 5;
-
-        // // Authorized Signature on the right
-        // doc
-        //   .fontSize(9)
-        //   .font('Helvetica')
-        //   .fillColor('#000000')
-        //   .text('Authorized Signature', 445, y);
-
-        y += 10;
-
-        const slipWidth = 360;
-        const slipHeight = 240;
-
-        // Draw box around weighment slip
-        doc
-          .roundedRect(40, y, slipWidth, slipHeight, 5)
+          .roundedRect(LEFT_COL_X, boxStartY, COL_WIDTH, SECTION_HEIGHT, 5)
           .strokeColor('#CCCCCC')
           .lineWidth(0.5)
           .stroke();
 
         if (weighmentSlipUrls && weighmentSlipUrls.length > 0) {
           try {
-            const resp = await axios.get(weighmentSlipUrls[0], {
-              responseType: 'arraybuffer',
-            });
+            const resp = await axios.get(weighmentSlipUrls[0], { responseType: 'arraybuffer' });
+
+            // High DPI resize
+            const highResWidth = COL_WIDTH * 3;
+            const highResHeight = SECTION_HEIGHT * 3;
+
             const img = await sharp(resp.data)
-              .resize(slipWidth - 20, slipHeight - 20, { fit: 'inside' })
-              .jpeg({ quality: 95 })
+              .resize(Math.round(highResWidth), Math.round(highResHeight), { fit: 'inside' })
+              .jpeg({ quality: 100 })
               .toBuffer();
-            doc.image(img, 50, y + 10, {
-              fit: [slipWidth - 20, slipHeight - 20],
+
+            doc.image(img, LEFT_COL_X + 10, boxStartY + 10, {
+              fit: [COL_WIDTH - 20, SECTION_HEIGHT - 20]
             });
           } catch (imgErr) {
             console.error('Failed to load weighment slip image:', imgErr);
           }
         }
 
-        // Optional: Add stamp image on the right side under signature
+        // --- 2. TERMS AND CONDITIONS (Right Half) ---
+        // Header
+        doc.fontSize(9).font('Helvetica-Bold').fillColor('#000000')
+          .text('Terms and Conditions', RIGHT_COL_X, y); // Aligned with "Weightment Slip" header
+
+        // Box
+        doc
+          .roundedRect(RIGHT_COL_X, boxStartY, COL_WIDTH, SECTION_HEIGHT, 5)
+          .strokeColor('#CCCCCC')
+          .lineWidth(0.5)
+          .stroke();
+
+        // Content
+        const termsText = `1. Goods once sold will not be taken back.
+2. Interest @ 18% p.a. will be charged if payment is not made within the due date.
+3. All disputes are subject to [City/State] jurisdiction only.
+4. We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.`;
+
+        doc.fontSize(9).font('Helvetica').fillColor('#000000')
+          .text(termsText, RIGHT_COL_X + 10, boxStartY + 10, {
+            width: COL_WIDTH - 20,
+            align: 'left',
+            lineGap: 4
+          });
+
+        /* ---------- STAMP IMAGE ---------- */
         if (stampImageUrl) {
           try {
-            const stampResp = await axios.get(stampImageUrl, {
-              responseType: 'arraybuffer',
-            });
+            const stampResp = await axios.get(stampImageUrl, { responseType: 'arraybuffer' });
             const stampImg = await sharp(stampResp.data)
-              .resize(80, 80, { fit: 'inside' })
-              .jpeg({ quality: 90 })
+              .resize(240, 240, { fit: 'inside' })
+              .jpeg({ quality: 100 })
               .toBuffer();
             doc.image(stampImg, 460, y + 20, { width: 80 });
           } catch (stampErr) {
@@ -446,11 +335,7 @@ export class PdfService {
 
         doc.end();
       } catch (err: any) {
-        reject(
-          new BadRequestException(
-            `PDF generation failed: ${err?.message || err}`,
-          ),
-        );
+        reject(new BadRequestException(`PDF generation failed: ${err?.message || err}`));
       }
     });
   }
