@@ -3,7 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from 'src/entities/user.entity';
 import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { OtpService } from './otp.service';
 import { UserSession } from 'src/entities/user-session.entity';
@@ -23,7 +22,7 @@ export class AuthService {
     private readonly tokenService: TokenService,
   ) {}
 
-  // ---------------- CREATE SESSION ----------------
+  // ---------- SESSION ----------
   async createSession(user: User, req: any) {
     const session = this.sessionRepo.create({
       user,
@@ -32,90 +31,74 @@ export class AuthService {
       expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
     });
 
-    const savedSession = await this.sessionRepo.save(session);
+    const saved = await this.sessionRepo.save(session);
 
     const refreshToken = this.tokenService.generateRefreshToken(
       user.id,
-      savedSession.id,
+      saved.id,
     );
 
-    savedSession.refreshTokenHash = await bcrypt.hash(refreshToken, 10);
-
-    await this.sessionRepo.save(savedSession);
+    saved.refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+    await this.sessionRepo.save(saved);
 
     const accessToken = this.tokenService.generateAccessToken(user.id);
 
     return { accessToken, refreshToken };
   }
 
-  // ---------------- REGISTER ----------------
-  async register(dto: RegisterDto) {
+  // ---------- SEND OTP ----------
+  async sendOtp(mobileNumber: string) {
+    const user = await this.userRepo.findOne({ where: { mobileNumber } });
+
+    await this.otpService.sendOtp(mobileNumber);
+
+    return {
+      message: 'OTP sent',
+      next: user ? 'LOGIN_VERIFY' : 'REGISTER',
+    };
+  }
+
+  // ---------- VERIFY OTP ----------
+  async verifyOtp(dto: VerifyOtpDto, req: any) {
+    await this.otpService.verifyOtp(dto.mobileNumber, dto.otp);
+
+    const user = await this.userRepo.findOne({
+      where: { mobileNumber: dto.mobileNumber },
+    });
+
+    if (!user) {
+      return {
+        next: 'REGISTER',
+        mobileNumber: dto.mobileNumber,
+      };
+    }
+
+    const tokens = await this.createSession(user, req);
+
+    return {
+      next: 'HOME',
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+    };
+  }
+
+  // ---------- REGISTER AFTER OTP ----------
+  async registerAfterOtp(dto: RegisterDto, req: any) {
     const exists = await this.userRepo.findOne({
       where: { mobileNumber: dto.mobileNumber },
     });
 
     if (exists) {
-      throw new BadRequestException('Mobile already registered');
+      throw new BadRequestException('User already exists');
     }
 
-    await this.userRepo.save(
+    const user = await this.userRepo.save(
       this.userRepo.create({
         mobileNumber: dto.mobileNumber,
         name: dto.name,
         state: dto.state,
       }),
     );
-
-    await this.otpService.sendOtp(dto.mobileNumber);
-
-    return {
-      message: 'OTP sent to mobile number',
-    };
-  }
-
-  // ---------------- REGISTER VERIFY ----------------
-  async verifyRegisterOtp(dto: VerifyOtpDto, req: any) {
-    await this.otpService.verifyOtp(dto.mobileNumber, dto.otp);
-
-    const user = await this.userRepo.findOne({
-      where: { mobileNumber: dto.mobileNumber },
-    });
-
-    if (!user) {
-      throw new BadRequestException('User not found');
-    }
-
-    return this.createSession(user, req);
-  }
-
-  // ---------------- LOGIN ----------------
-  async login(dto: LoginDto) {
-    const user = await this.userRepo.findOne({
-      where: { mobileNumber: dto.mobileNumber },
-    });
-
-    if (!user) {
-      throw new BadRequestException('User not registered');
-    }
-
-    await this.otpService.sendOtp(dto.mobileNumber);
-
-    return {
-      message: 'OTP sent to mobile number',
-    };
-  }
-
-  // ---------------- LOGIN VERIFY ----------------
-  async verifyLoginOtp(dto: VerifyOtpDto, req: any) {
-    await this.otpService.verifyOtp(dto.mobileNumber, dto.otp);
-
-    const user = await this.userRepo.findOne({
-      where: { mobileNumber: dto.mobileNumber },
-    });
-
-    if (!user) {
-      throw new BadRequestException('User not found');
-    }
 
     return this.createSession(user, req);
   }

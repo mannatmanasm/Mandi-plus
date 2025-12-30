@@ -1,5 +1,6 @@
 import { IsEnum, IsNotEmpty, IsString, Matches } from 'class-validator';
 import { IndiaState } from 'src/common/enums/india-state.enum';
+
 export class RegisterDto {
   @IsString()
   @IsNotEmpty()
@@ -11,6 +12,8 @@ export class RegisterDto {
   })
   mobileNumber: string;
 
-  @IsEnum(IndiaState)
+  @IsEnum(IndiaState, {
+    message: 'Invalid Indian state',
+  })
   state: IndiaState;
 }
