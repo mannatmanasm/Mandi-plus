@@ -19,11 +19,16 @@ export class OtpService {
     private readonly httpService: HttpService,
   ) {}
 
-  // ---------------- SEND OTP (SMS ONLY) ----------------
   async sendOtp(mobileNumber: string): Promise<void> {
-    const template = 'MANDIPL_OTP';
+    const apiKey = process.env.TWOFACTOR_API_KEY;
 
-    const url = `https://2factor.in/API/V1/${process.env.TWOFACTOR_API_KEY}/SMS/${mobileNumber}/AUTOGEN/${template}`;
+    if (!apiKey) {
+      throw new Error('2Factor API key missing');
+    }
+
+    const templateName = 'MarkhetFarmer';
+
+    const url = `https://2factor.in/API/V1/${apiKey}/SMS/${mobileNumber}/AUTOGEN/${templateName}`;
 
     const response: AxiosResponse<TwoFactorResponse> = await lastValueFrom(
       this.httpService.get(url),
@@ -33,42 +38,45 @@ export class OtpService {
       throw new BadRequestException('Failed to send OTP');
     }
 
-    await this.otpRepo.save(
-      this.otpRepo.create({
-        mobileNumber,
-        providerSessionId: response.data.Details,
-      }),
-    );
+    // Save OTP session
+    const otpSession = this.otpRepo.create({
+      mobileNumber,
+      providerSessionId: response.data.Details,
+      isUsed: false,
+    });
+
+    await this.otpRepo.save(otpSession);
   }
 
-  // ---------------- VERIFY OTP ----------------
+  // ================= VERIFY OTP =================
   async verifyOtp(mobileNumber: string, otp: string): Promise<void> {
     const record = await this.otpRepo.findOne({
       where: {
         mobileNumber,
         isUsed: false,
       },
-      order: { createdAt: 'DESC' },
+      order: {
+        createdAt: 'DESC',
+      },
     });
 
     if (!record) {
       throw new BadRequestException('OTP session not found');
     }
 
-    const url = `https://2factor.in/API/V1/${process.env.TWOFACTOR_API_KEY}/SMS/VERIFY/${record.providerSessionId}/${otp}`;
+    const apiKey = process.env.TWOFACTOR_API_KEY;
 
-    // console.log('Verifying OTP with URL:', url);
+    const url = `https://2factor.in/API/V1/${apiKey}/SMS/VERIFY/${record.providerSessionId}/${otp}`;
 
     const response: AxiosResponse<TwoFactorResponse> = await lastValueFrom(
       this.httpService.get(url),
     );
 
-    // console.log('OTP Verification Response:', response);
-
     if (response.data.Status !== 'Success') {
       throw new BadRequestException('Invalid or expired OTP');
     }
 
+    // Mark OTP as used
     record.isUsed = true;
     await this.otpRepo.save(record);
   }
