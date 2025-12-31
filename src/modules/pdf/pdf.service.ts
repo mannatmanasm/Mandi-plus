@@ -281,7 +281,7 @@ export class PdfService {
         y = rowY + rowHeight + 15;
 
         /* ---------- NOTES ---------- */
-        const notesBoxHeight = 110; // Reduced from 125 to 110
+        const notesBoxHeight = 110;
         doc
           .roundedRect(margin, y, 360, notesBoxHeight, 5)
           .strokeColor('#CCCCCC')
@@ -336,7 +336,7 @@ export class PdfService {
         doc
           .fontSize(10)
           .font('Helvetica-Bold')
-          .text('Sub Total', subTotalX + 10, y + 15);
+          .text(' Total', subTotalX + 10, y + 15);
         doc.fontSize(12).text(amount.toFixed(2), subTotalX + 10, y + 33);
 
         y += notesBoxHeight + 15; // Reduced spacing from 25 to 15
@@ -351,7 +351,7 @@ export class PdfService {
 
         const SECTION_HEIGHT = 260; // Increased from 200 to 260
 
-        // --- 1. WEIGHMENT SLIP (Left Half) ---
+        //  1. WEIGHMENT SLIP (Left Half)
         doc
           .fontSize(9)
           .font('Helvetica-Bold')
@@ -390,23 +390,30 @@ export class PdfService {
           }
         }
 
-        // --- 2. TERMS AND CONDITIONS (Right Half) ---
-        const textX = RIGHT_COL_X + 8;
-        let textY = boxStartY + 8;
-        const textWidth = COL_WIDTH - 16;
+        /* ---------- TERMS AND CONDITIONS ---------- */
 
-        doc.fontSize(7.8).fillColor('#000000');
+        // Heading OUTSIDE box (same as weighment)
+        doc
+          .fontSize(9)
+          .font('Helvetica-Bold')
+          .text('Terms and Conditions', RIGHT_COL_X, y);
 
-        // 1. Scope of Claim Eligibility (BOLD)
+        const termsBoxY = y + 15;
+        const PADDING = 10;
+        const textX = RIGHT_COL_X + PADDING;
+        let textY = termsBoxY + PADDING;
+        const textWidth = COL_WIDTH - PADDING * 2;
+
+        doc.fontSize(7.8).font('Helvetica');
+
         doc
           .font('Helvetica-Bold')
-          .text('1.Scope of Claim Eligibility : ', textX, textY, {
+          .text('1. Scope of Claim Eligibility :', textX, textY, {
             width: textWidth,
           });
 
-        textY = doc.y;
+        textY = doc.y + 4;
 
-        // normal text
         doc
           .font('Helvetica')
           .text(
@@ -414,59 +421,66 @@ export class PdfService {
               '• Theft, hijacking, or unlawful removal of the cargo.\n' +
               '• Shortage or Missing Goods: Claims are admissible only when the difference between loading and unloading weighment slips exceeds 2 Tons.\n' +
               '• Loss due to looting, strikes, riots, protests, or civil commotion.\n' +
-              '• Damage caused by adverse weather conditions or natural calamities (Act of God).\n' +
+              '• Damage caused by adverse weather conditions or natural calamities.\n' +
               '• Fire, explosion, or related perils.\n' +
               '• Loss caused due to driver fraud, negligence, or wilful misconduct.\n',
             textX,
             textY,
-            { width: textWidth, lineGap: 1 },
+            { width: textWidth, lineGap: 1.7 },
           );
 
-        textY = doc.y;
+        textY = doc.y + 5;
 
-        // 2. Mandatory Documentation for Claim Processing (BOLD)
         doc
           .font('Helvetica-Bold')
           .text(
-            '2. Mandatory Documentation for Claim Processing : ',
+            '2. Mandatory Documentation for Claim Processing :',
             textX,
             textY,
             { width: textWidth },
           );
 
-        textY = doc.y;
+        textY = doc.y + 4;
 
         doc
           .font('Helvetica')
           .text(
             '• Photographs or videos of the damaged goods or incident.\n' +
-              '• Copy of the FIR and original Invoice.\n' +
-              '• Damage Certificate and Letter of Subrogation issued by the transporter.\n' +
-              '• Valid Insurance Certificate and Proof of Delivery (POD) issued at unloading.\n',
+              '• Copy of FIR and original Invoice.\n' +
+              '• Damage Certificate and Letter of Subrogation.\n' +
+              '• Insurance Certificate and Proof of Delivery (POD) issued at unloading.\n',
             textX,
             textY,
-            { width: textWidth, lineGap: 1 },
+            { width: textWidth, lineGap: 1.5 },
           );
 
-        textY = doc.y;
+        textY = doc.y + 5;
 
-        // 3. Dispute Resolution & Communication (BOLD)
         doc
           .font('Helvetica-Bold')
-          .text('3. Dispute Resolution & Communication : ', textX, textY, {
+          .text('3. Dispute Resolution & Communication :', textX, textY, {
             width: textWidth,
           });
 
-        textY = doc.y;
+        textY = doc.y + 3;
 
         doc
           .font('Helvetica')
           .text(
-            'All claim-related communication must be made via email at onerootoffice@oneroot.farm.',
+            'All claim-related communication must be made via email at support@mandiplus.com.',
             textX,
             textY,
-            { width: textWidth, lineGap: 1 },
+            { width: textWidth, lineGap: 1.8 },
           );
+
+        const contentEndY = doc.y;
+
+        const TERMS_BOX_HEIGHT = contentEndY - termsBoxY + PADDING;
+
+        doc
+          .roundedRect(RIGHT_COL_X, termsBoxY, COL_WIDTH, TERMS_BOX_HEIGHT, 5)
+          .strokeColor('#CCCCCC')
+          .stroke();
 
         /* ---------- STAMP IMAGE ---------- */
         if (stampImageUrl) {
