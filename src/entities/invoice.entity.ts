@@ -97,6 +97,9 @@ export class Invoice {
   @Column('decimal', { precision: 12, scale: 2 })
   amount: number;
 
+  @Column('decimal', { precision: 12, scale: 2, nullable: true })
+  premiumAmount: number;
+
   // ===============================
   // USER RELATION
   // ===============================
@@ -115,6 +118,13 @@ export class Invoice {
     onDelete: 'SET NULL',
   })
   truck: Truck;
+
+  @Column({
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
+  ownerName: string | null;
 
   @Column({
     type: 'varchar',
