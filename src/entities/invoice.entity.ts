@@ -121,6 +121,13 @@ export class Invoice {
     length: 255,
     nullable: true,
   })
+  ownerName: string | null;
+
+  @Column({
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
   vehicleNumber: string | null;
 
   // ===============================

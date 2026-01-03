@@ -301,11 +301,15 @@ export class PdfService {
           : invoiceData.supplierName;
 
         doc.text(
-          `VEHICLE NO : ${invoiceData.vehicleNumber || '-'}`,
+          `Vehicle No : ${invoiceData.vehicleNumber || '-'}`,
           margin + 10,
           y + 25,
         );
-        doc.text(`Per Nut Rate: Rs.${rate.toFixed(2)}`, margin + 10, y + 38);
+        doc.text(
+          `Transporter Name : ${invoiceData.ownerName || '-'}`,
+          margin + 10,
+          y + 38,
+        );
 
         const productNameForNotes = Array.isArray(invoiceData.productName)
           ? invoiceData.productName[0]
@@ -467,7 +471,7 @@ export class PdfService {
         doc
           .font('Helvetica')
           .text(
-            'All claim-related communication must be made via email at support@mandiplus.com.',
+            'All claim-related communication must be made via email at support@mandiplus.com  Mob No: +91 99001 86757 ',
             textX,
             textY,
             { width: textWidth, lineGap: 1.8 },

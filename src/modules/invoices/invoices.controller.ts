@@ -13,7 +13,13 @@ import {
   UsePipes,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiConsumes,
+  ApiBody,
+} from '@nestjs/swagger';
 import { InvoicesService } from './invoices.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
@@ -34,8 +40,11 @@ export class InvoicesController {
     schema: {
       type: 'object',
       properties: {
-        userId: { type: 'string', format: 'uuid', description: 'User ID who owns this invoice' },
-        invoiceNumber: { type: 'string' },
+        userId: {
+          type: 'string',
+          format: 'uuid',
+          description: 'User ID who owns this invoice',
+        },
         invoiceDate: { type: 'string', format: 'date' },
         terms: { type: 'string', nullable: true },
         supplierName: { type: 'string' },
@@ -55,6 +64,8 @@ export class InvoicesController {
         weighmentSlipNote: { type: 'string', nullable: true },
         isClaim: { type: 'boolean', nullable: true },
         claimDetails: { type: 'string', nullable: true },
+        ownerName: { type: 'string', nullable: true },
+
         weighmentSlips: {
           type: 'array',
           items: { type: 'string', format: 'binary' },
@@ -79,7 +90,7 @@ export class InvoicesController {
   }
 
   @Get('user/:userId')
-  @ApiOperation({ summary: "Get all invoices for a specific user" })
+  @ApiOperation({ summary: 'Get all invoices for a specific user' })
   @ApiResponse({ status: 200, description: 'List of user invoices' })
   @ApiResponse({ status: 404, description: 'User not found' })
   findByUserId(@Param('userId') userId: string) {
@@ -107,13 +118,29 @@ export class InvoicesController {
         invoiceDate: { type: 'string', format: 'date', nullable: true },
         terms: { type: 'string', nullable: true },
         supplierName: { type: 'string', nullable: true },
-        supplierAddress: { type: 'array', items: { type: 'string' }, nullable: true },
+        supplierAddress: {
+          type: 'array',
+          items: { type: 'string' },
+          nullable: true,
+        },
         placeOfSupply: { type: 'string', nullable: true },
         billToName: { type: 'string', nullable: true },
-        billToAddress: { type: 'array', items: { type: 'string' }, nullable: true },
+        billToAddress: {
+          type: 'array',
+          items: { type: 'string' },
+          nullable: true,
+        },
         shipToName: { type: 'string', nullable: true },
-        shipToAddress: { type: 'array', items: { type: 'string' }, nullable: true },
-        productName: { type: 'array', items: { type: 'string' }, nullable: true },
+        shipToAddress: {
+          type: 'array',
+          items: { type: 'string' },
+          nullable: true,
+        },
+        productName: {
+          type: 'array',
+          items: { type: 'string' },
+          nullable: true,
+        },
         hsnCode: { type: 'string', nullable: true },
         quantity: { type: 'number', nullable: true },
         rate: { type: 'number', nullable: true },
@@ -150,4 +177,3 @@ export class InvoicesController {
     return this.invoicesService.remove(id);
   }
 }
-

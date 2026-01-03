@@ -2,12 +2,12 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
-  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
+
 import { Queue } from 'bullmq';
-import { Repository } from 'typeorm';
+import { Repository, Like } from 'typeorm';
 import { Invoice } from '../../entities/invoice.entity';
 import { Truck } from '../../entities/truck.entity';
 import { User } from '../../entities/user.entity';
@@ -27,31 +27,49 @@ export class InvoicesService {
     @InjectQueue('invoice-pdf')
     private readonly invoicePdfQueue: Queue,
     private readonly storageService: StorageService,
-  ) { }
+  ) {}
+
+  private async generateInvoiceNumber(): Promise<string> {
+    const year = new Date().getFullYear();
+
+    const lastInvoice = await this.invoiceRepository.findOne({
+      where: {
+        invoiceNumber: Like(`INV-${year}-%`),
+      },
+      order: {
+        createdAt: 'DESC',
+      },
+    });
+
+    let nextSeq = 1;
+
+    if (lastInvoice) {
+      const lastNumber = lastInvoice.invoiceNumber.split('-').pop();
+      nextSeq = Number(lastNumber) + 1;
+    }
+
+    return `INV-${year}-${String(nextSeq).padStart(6, '0')}`;
+  }
 
   async create(
     createInvoiceDto: CreateInvoiceDto,
     weighmentSlipFiles?: any,
   ): Promise<Invoice> {
-    // Validate user exists
+    // 1. Validate user
     const user = await this.userRepository.findOne({
       where: { id: createInvoiceDto.userId },
     });
 
     if (!user) {
-      throw new NotFoundException(`User with ID ${createInvoiceDto.userId} not found`);
+      throw new NotFoundException(
+        `User with ID ${createInvoiceDto.userId} not found`,
+      );
     }
 
-    // Check if invoice number already exists
-    const existingInvoice = await this.invoiceRepository.findOne({
-      where: { invoiceNumber: createInvoiceDto.invoiceNumber },
-    });
+    // 2. Generate invoice number (AUTO)
+    const invoiceNumber = await this.generateInvoiceNumber();
 
-    if (existingInvoice) {
-      throw new ConflictException('Invoice with this number already exists');
-    }
-
-    // Handle truck by truck number - create if doesn't exist
+    // 3. Handle truck
     let truck: Truck | null = null;
     if (createInvoiceDto.truckNumber) {
       truck = await this.truckRepository.findOne({
@@ -59,59 +77,64 @@ export class InvoicesService {
       });
 
       if (!truck) {
-        // Create a new truck with the truck number
-        // Using minimal required fields with default values
-        const newTruck = this.truckRepository.create({
-          truckNumber: createInvoiceDto.truckNumber,
-          ownerName: 'Unknown', // Default value, should be updated later
-          ownerContactNumber: '0000000000', // Default value, should be updated later
-          driverName: 'Unknown', // Default value, should be updated later
-          driverContactNumber: '0000000000', // Default value, should be updated later
-        });
-        truck = await this.truckRepository.save(newTruck);
+        truck = await this.truckRepository.save(
+          this.truckRepository.create({
+            truckNumber: createInvoiceDto.truckNumber,
+            ownerName: 'Unknown',
+            ownerContactNumber: '0000000000',
+            driverName: 'Unknown',
+            driverContactNumber: '0000000000',
+          }),
+        );
       }
     }
 
-    // Upload weighment slip files if provided
-    let weighmentSlipUrls;
-    console.log('Weighment Slip Files:', weighmentSlipFiles);
+    // 4. Upload weighment slips
+    let weighmentSlipUrls: string[] | null = null;
     if (weighmentSlipFiles) {
-      weighmentSlipUrls = await this.storageService.uploadMultipleFilesObj(
+      const uploaded = await this.storageService.uploadMultipleFilesObj(
         weighmentSlipFiles,
         'weighment-slips',
       );
+
+      weighmentSlipUrls = uploaded?.length ? uploaded : null;
     }
 
-    console.log('Weighment Slip URLs:', weighmentSlipUrls);
-
-    // Ensure productName is a string (handle both string and array cases)
+    // 5. Normalize product name
     const productName = Array.isArray(createInvoiceDto.productName)
-      ? createInvoiceDto.productName[0] // Take first element if it's an array
-      : createInvoiceDto.productName;  // Use as is if it's a string
+      ? createInvoiceDto.productName[0]
+      : createInvoiceDto.productName;
 
-    // Create invoice with proper productName handling
-    const invoiceData: any = {
-      user: user, // Associate invoice with user
-      invoiceNumber: createInvoiceDto.invoiceNumber,
+    // 6. Create invoice entity
+    const invoiceData: Partial<Invoice> = {
+      user,
+      invoiceNumber,
       invoiceDate: new Date(createInvoiceDto.invoiceDate),
       terms: createInvoiceDto.terms || null,
+
       supplierName: createInvoiceDto.supplierName,
       supplierAddress: createInvoiceDto.supplierAddress,
       placeOfSupply: createInvoiceDto.placeOfSupply,
+
       billToName: createInvoiceDto.billToName,
       billToAddress: createInvoiceDto.billToAddress,
       shipToName: createInvoiceDto.shipToName,
       shipToAddress: createInvoiceDto.shipToAddress,
-      productName: productName, // Store as plain string
+
+      productName,
       hsnCode: createInvoiceDto.hsnCode || null,
       quantity: createInvoiceDto.quantity,
       rate: createInvoiceDto.rate,
       amount: createInvoiceDto.amount,
+
       vehicleNumber: createInvoiceDto.vehicleNumber || null,
       weighmentSlipNote: createInvoiceDto.weighmentSlipNote || null,
-      weighmentSlipUrls: weighmentSlipUrls?.length > 0 ? weighmentSlipUrls : null,
+      weighmentSlipUrls,
+
       isClaim: createInvoiceDto.isClaim || false,
       claimDetails: createInvoiceDto.claimDetails || null,
+
+      ownerName: createInvoiceDto.ownerName || truck?.ownerName || null,
     };
 
     if (truck) {
@@ -119,17 +142,26 @@ export class InvoicesService {
     }
 
     const invoice = this.invoiceRepository.create(invoiceData);
-    const saveResult = await this.invoiceRepository.save(invoice);
-    const savedInvoice = (
-      Array.isArray(saveResult) ? saveResult[0] : saveResult
-    ) as Invoice;
 
-    // Queue PDF generation job
+    // 7. Save with retry protection
+    let savedInvoice: Invoice;
+    try {
+      savedInvoice = await this.invoiceRepository.save(invoice);
+    } catch (err: any) {
+      if (err.code === '23505') {
+        invoice.invoiceNumber = await this.generateInvoiceNumber();
+        savedInvoice = await this.invoiceRepository.save(invoice);
+      } else {
+        throw err;
+      }
+    }
+
+    // 8. Queue PDF generation
     await this.invoicePdfQueue.add('generate-pdf', {
       invoiceId: savedInvoice.id,
     });
 
-    // Increment claim count if it's a claim invoice
+    // 9. Increment claim count
     if (savedInvoice.isClaim && truck) {
       await this.truckRepository.increment({ id: truck.id }, 'claimCount', 1);
     }
@@ -186,69 +218,80 @@ export class InvoicesService {
     updateInvoiceDto: UpdateInvoiceDto,
     weighmentSlipFiles?: Express.Multer.File[],
   ): Promise<Invoice> {
-    const invoice = await this.findOne(id);
+    const invoice = await this.invoiceRepository.findOne({
+      where: { id },
+      relations: ['truck'],
+    });
 
-    // Check if invoice number is being updated and conflicts
-    if (
-      updateInvoiceDto.invoiceNumber &&
-      updateInvoiceDto.invoiceNumber !== invoice.invoiceNumber
-    ) {
-      const existingInvoice = await this.invoiceRepository.findOne({
-        where: { invoiceNumber: updateInvoiceDto.invoiceNumber },
-      });
-
-      if (existingInvoice) {
-        throw new ConflictException('Invoice with this number already exists');
-      }
+    if (!invoice) {
+      throw new NotFoundException('Invoice not found');
     }
 
-    // Handle truck by truck number if being updated - create if doesn't exist
+    /* ===============================
+     1. HANDLE TRUCK UPDATE
+     =============================== */
     if (updateInvoiceDto.truckNumber) {
       let truck = await this.truckRepository.findOne({
         where: { truckNumber: updateInvoiceDto.truckNumber },
       });
 
       if (!truck) {
-        // Create a new truck with the truck number
-        // Using minimal required fields with default values
-        const newTruck = this.truckRepository.create({
-          truckNumber: updateInvoiceDto.truckNumber,
-        });
-        truck = await this.truckRepository.save(newTruck);
+        truck = await this.truckRepository.save(
+          this.truckRepository.create({
+            truckNumber: updateInvoiceDto.truckNumber,
+            ownerName: 'Unknown',
+            ownerContactNumber: '0000000000',
+            driverName: 'Unknown',
+            driverContactNumber: '0000000000',
+          }),
+        );
       }
 
       invoice.truck = truck;
     }
 
-    // Upload new weighment slip files if provided
+    /* ===============================
+     2. UPLOAD WEIGHMENT SLIPS
+     =============================== */
     if (weighmentSlipFiles && weighmentSlipFiles.length > 0) {
       const newUrls = await this.storageService.uploadMultipleFiles(
         weighmentSlipFiles,
         'weighment-slips',
       );
 
-      // Merge with existing URLs
-      const existingUrls = invoice.weighmentSlipUrls || [];
-      invoice.weighmentSlipUrls = [...existingUrls, ...newUrls];
+      invoice.weighmentSlipUrls = [
+        ...(invoice.weighmentSlipUrls || []),
+        ...newUrls,
+      ];
     }
 
-    // Update invoice fields - handle productName conversion if provided
-    // Remove truckNumber from updateData since we handle it separately above
-    const { truckNumber, ...restUpdateData } = updateInvoiceDto;
-    const updateData: any = { ...restUpdateData };
+    /* ===============================
+     3. PREPARE UPDATE DATA
+     =============================== */
+    const {
+      truckNumber, // handled separately
+      invoiceNumber, // ❌ should never be updated
+      ...rest
+    } = updateInvoiceDto as any;
 
-    if (updateData.invoiceDate) {
-      updateData.invoiceDate = new Date(updateData.invoiceDate);
+    if (rest.invoiceDate) {
+      rest.invoiceDate = new Date(rest.invoiceDate);
     }
 
-    if (updateData.productName && Array.isArray(updateData.productName)) {
-      updateData.productName = JSON.stringify(updateData.productName);
+    if (rest.productName && Array.isArray(rest.productName)) {
+      rest.productName = rest.productName[0];
     }
 
-    Object.assign(invoice, updateData);
+    /* ===============================
+     4. APPLY UPDATES
+     =============================== */
+    Object.assign(invoice, rest);
+
     const updatedInvoice = await this.invoiceRepository.save(invoice);
 
-    // Queue PDF regeneration
+    /* ===============================
+     5. REGENERATE PDF
+     =============================== */
     await this.invoicePdfQueue.add('generate-pdf', {
       invoiceId: updatedInvoice.id,
     });

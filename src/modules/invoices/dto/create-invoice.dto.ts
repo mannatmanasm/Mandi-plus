@@ -14,15 +14,13 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type, Transform } from 'class-transformer';
 
 export class CreateInvoiceDto {
-  @ApiProperty({ example: 'user-uuid-here', description: 'User ID who owns this invoice' })
+  @ApiProperty({
+    example: 'user-uuid-here',
+    description: 'User ID who owns this invoice',
+  })
   @IsUUID()
   @IsNotEmpty()
   userId: string;
-
-  @ApiProperty({ example: 'INV-2024-001', description: 'Invoice number' })
-  @IsString()
-  @IsNotEmpty()
-  invoiceNumber: string;
 
   @ApiProperty({ example: '2024-01-15', description: 'Invoice date' })
   @IsDateString()
@@ -40,9 +38,13 @@ export class CreateInvoiceDto {
   @IsNotEmpty()
   supplierName: string;
 
+  @IsOptional()
+  @IsString()
+  ownerName?: string;
+
   @ApiProperty({
     example: ['123 Main St', 'Mumbai, Maharashtra 400001'],
-    description: 'Supplier address lines'
+    description: 'Supplier address lines',
   })
   //Allow string or JSON string to become Array
   @Transform(({ value }) => {
@@ -75,7 +77,7 @@ export class CreateInvoiceDto {
 
   @ApiProperty({
     example: ['456 Market St', 'Delhi 110001'],
-    description: 'Bill to address lines'
+    description: 'Bill to address lines',
   })
   // Allow string or JSON string to become Array
   @Transform(({ value }) => {
@@ -101,7 +103,7 @@ export class CreateInvoiceDto {
 
   @ApiProperty({
     example: ['456 Market St', 'Delhi 110001'],
-    description: 'Ship to address lines'
+    description: 'Ship to address lines',
   })
   // Allow string or JSON string to become Array
   @Transform(({ value }) => {
@@ -153,7 +155,7 @@ export class CreateInvoiceDto {
   @Min(0)
   rate: number;
 
-  @ApiProperty({ example: 5082.50, description: 'Total amount' })
+  @ApiProperty({ example: 5082.5, description: 'Total amount' })
   // Convert String to Number
   @Type(() => Number)
   @IsNumber()
@@ -172,20 +174,29 @@ export class CreateInvoiceDto {
   vehicleNumber?: string;
 
   // Weighbridge details
-  @ApiPropertyOptional({ example: 'Weighment slip note', description: 'Weighment slip note' })
+  @ApiPropertyOptional({
+    example: 'Weighment slip note',
+    description: 'Weighment slip note',
+  })
   @IsString()
   @IsOptional()
   weighmentSlipNote?: string;
 
   // Claim details
-  @ApiPropertyOptional({ example: false, description: 'Is this a claim invoice' })
+  @ApiPropertyOptional({
+    example: false,
+    description: 'Is this a claim invoice',
+  })
   // Handle Boolean conversion from string
   @Transform(({ value }) => value === 'true' || value === true)
   @IsBoolean()
   @IsOptional()
   isClaim?: boolean;
 
-  @ApiPropertyOptional({ example: 'Claim details here', description: 'Claim details' })
+  @ApiPropertyOptional({
+    example: 'Claim details here',
+    description: 'Claim details',
+  })
   @IsString()
   @IsOptional()
   claimDetails?: string;
