@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { Truck } from './truck.entity';
 import { User } from './user.entity';
+import { InvoiceType } from '../common/enums/invoice-type.enum';
 
 @Entity('invoices')
 @Index(['invoiceNumber'], { unique: true })
@@ -32,6 +33,18 @@ export class Invoice {
     nullable: true,
   })
   terms: string | null;
+
+  // ===============================
+  // INVOICE TYPE (SUPPLIER vs BUYER)
+  // ===============================
+
+  @Column({
+    type: 'enum',
+    enum: InvoiceType,
+    nullable: false,
+    default: InvoiceType.SUPPLIER_INVOICE,
+  })
+  invoiceType: InvoiceType;
 
   // ===============================
   // SUPPLIER DETAILS
