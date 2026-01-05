@@ -27,9 +27,11 @@ async function bootstrap() {
   SwaggerModule.setup('api/docs', app, document);
 
   app.enableCors({
-    origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'],
-    credentials: false,
+    // origin: ['http://localhost:3001'], // frontend origin
+    origin: process.env.CORS_ORIGINS?.split(','),
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
   });
 
   await app.listen(process.env.PORT ?? 3005);

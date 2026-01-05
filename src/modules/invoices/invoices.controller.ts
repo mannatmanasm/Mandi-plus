@@ -96,6 +96,24 @@ export class InvoicesController {
     return this.invoicesService.findAll();
   }
 
+  // ===============================
+  // ADMIN ENDPOINTS (must be before :id route)
+  // ===============================
+
+  @Get('admin/filter')
+  @ApiOperation({
+    summary: 'Filter invoices for admin dashboard',
+    description:
+      'Filter invoices by invoice type, date range, supplier name, buyer name, or user ID',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Filtered list of invoices',
+  })
+  async filterInvoices(@Query() filterDto: FilterInvoicesDto) {
+    return this.invoicesService.filterInvoices(filterDto);
+  }
+
   @Get('user/:userId')
   @ApiOperation({ summary: 'Get all invoices for a specific user' })
   @ApiResponse({ status: 200, description: 'List of user invoices' })
@@ -182,24 +200,6 @@ export class InvoicesController {
   @ApiResponse({ status: 404, description: 'Invoice not found' })
   remove(@Param('id') id: string) {
     return this.invoicesService.remove(id);
-  }
-
-  // ===============================
-  // ADMIN ENDPOINTS
-  // ===============================
-
-  @Get('admin/filter')
-  @ApiOperation({
-    summary: 'Filter invoices for admin dashboard',
-    description:
-      'Filter invoices by invoice type, date range, supplier name, buyer name, or user ID',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Filtered list of invoices',
-  })
-  async filterInvoices(@Query() filterDto: FilterInvoicesDto) {
-    return this.invoicesService.filterInvoices(filterDto);
   }
 
   @Post('admin/export')
