@@ -7,11 +7,13 @@ import {
   IsBoolean,
   IsDateString,
   IsUUID,
+  IsEnum,
   Min,
   ArrayMinSize,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type, Transform } from 'class-transformer';
+import { InvoiceType } from '../../../common/enums/invoice-type.enum';
 
 export class CreateInvoiceDto {
   @ApiProperty({
@@ -31,6 +33,16 @@ export class CreateInvoiceDto {
   @IsString()
   @IsOptional()
   terms?: string;
+
+  @ApiProperty({
+    example: InvoiceType.SUPPLIER_INVOICE,
+    description: 'Invoice type - SUPPLIER_INVOICE or BUYER_INVOICE',
+    enum: InvoiceType,
+    default: InvoiceType.SUPPLIER_INVOICE,
+  })
+  @IsEnum(InvoiceType)
+  @IsOptional()
+  invoiceType?: InvoiceType;
 
   // Supplier details
   @ApiProperty({ example: 'ABC Suppliers', description: 'Supplier name' })
