@@ -31,6 +31,7 @@ import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { ParseFormDataPipe } from '../../common/pipes/parse-form-data.pipe';
 import { FilterInvoicesDto } from './dto/filter-invoices.dto';
 import { ExportInvoicesDto } from './dto/export-invoices.dto';
+import { RegenerateInvoiceDto } from './dto/regenerate-invoice.dto';
 
 @ApiTags('Invoices')
 @Controller('invoices')
@@ -128,6 +129,21 @@ export class InvoicesController {
   @ApiResponse({ status: 404, description: 'Invoice not found' })
   findOne(@Param('id') id: string) {
     return this.invoicesService.findOne(id);
+  }
+
+  @Post('regenerate')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Update invoice using body (with invoiceId) and regenerate PDF',
+    description:
+      'Accepts an invoiceId and partial invoice payload in the body, updates the invoice, and regenerates its PDF.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Invoice updated and PDF regeneration queued successfully',
+  })
+  regenerateInvoiceAndPdf(@Body() regenerateDto: RegenerateInvoiceDto) {
+    return this.invoicesService.regenerateInvoiceAndPdf(regenerateDto);
   }
 
   @Patch(':id')
