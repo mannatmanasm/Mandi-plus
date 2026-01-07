@@ -31,6 +31,7 @@ import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { ParseFormDataPipe } from '../../common/pipes/parse-form-data.pipe';
 import { FilterInvoicesDto } from './dto/filter-invoices.dto';
 import { ExportInvoicesDto } from './dto/export-invoices.dto';
+import { RegenerateInvoiceDto } from './dto/regenerate-invoice.dto';
 
 @ApiTags('Invoices')
 @Controller('invoices')
@@ -130,6 +131,21 @@ export class InvoicesController {
     return this.invoicesService.findOne(id);
   }
 
+  @Post('regenerate')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Update invoice using body (with invoiceId) and regenerate PDF',
+    description:
+      'Accepts an invoiceId and partial invoice payload in the body, updates the invoice, and regenerates its PDF.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Invoice updated and PDF regeneration queued successfully',
+  })
+  regenerateInvoiceAndPdf(@Body() regenerateDto: RegenerateInvoiceDto) {
+    return this.invoicesService.regenerateInvoiceAndPdf(regenerateDto);
+  }
+
   @Patch(':id')
   @UseInterceptors(FilesInterceptor('weighmentSlips', 10))
   @UsePipes(new ParseFormDataPipe())
@@ -139,7 +155,6 @@ export class InvoicesController {
     schema: {
       type: 'object',
       properties: {
-        invoiceNumber: { type: 'string', nullable: true },
         invoiceDate: { type: 'string', format: 'date', nullable: true },
         terms: { type: 'string', nullable: true },
         supplierName: { type: 'string', nullable: true },

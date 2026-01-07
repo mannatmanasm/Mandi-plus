@@ -23,9 +23,7 @@ export class TrucksService {
     });
 
     if (existingTruck) {
-      throw new ConflictException(
-        'Truck with this number already exists',
-      );
+      throw new ConflictException('Truck with this number already exists');
     }
 
     const truck = this.truckRepository.create(createTruckDto);
@@ -62,15 +60,16 @@ export class TrucksService {
     const truck = await this.findOne(id);
 
     // Check if truck number is being updated and conflicts with existing truck
-    if (updateTruckDto.truckNumber && updateTruckDto.truckNumber !== truck.truckNumber) {
+    if (
+      updateTruckDto.truckNumber &&
+      updateTruckDto.truckNumber !== truck.truckNumber
+    ) {
       const existingTruck = await this.truckRepository.findOne({
         where: { truckNumber: updateTruckDto.truckNumber },
       });
 
       if (existingTruck) {
-        throw new ConflictException(
-          'Truck with this number already exists',
-        );
+        throw new ConflictException('Truck with this number already exists');
       }
     }
 
@@ -89,4 +88,3 @@ export class TrucksService {
     return await this.truckRepository.save(truck);
   }
 }
-

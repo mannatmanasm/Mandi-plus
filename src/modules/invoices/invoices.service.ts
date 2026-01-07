@@ -18,6 +18,7 @@ import { InvoiceType } from '../../common/enums/invoice-type.enum';
 import { FilterInvoicesDto } from './dto/filter-invoices.dto';
 import { ExportInvoicesDto } from './dto/export-invoices.dto';
 import * as ExcelJS from 'exceljs';
+import { RegenerateInvoiceDto } from './dto/regenerate-invoice.dto';
 
 @Injectable()
 export class InvoicesService {
@@ -302,6 +303,20 @@ export class InvoicesService {
     });
 
     return updatedInvoice;
+  }
+
+  /**
+   * Update invoice data using a payload (including invoiceId) and
+   * regenerate the PDF. This is a convenience wrapper around `update`
+   * that allows the client to send `invoiceId` inside the body.
+   */
+  async regenerateInvoiceAndPdf(
+    regenerateDto: RegenerateInvoiceDto,
+  ): Promise<Invoice> {
+    const { invoiceId, ...updatePayload } = regenerateDto;
+
+    // Reuse existing update logic (which already queues PDF regeneration)
+    return this.update(invoiceId, updatePayload as UpdateInvoiceDto);
   }
 
   async remove(id: string): Promise<void> {
