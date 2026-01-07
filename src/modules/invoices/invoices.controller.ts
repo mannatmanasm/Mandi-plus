@@ -139,7 +139,6 @@ export class InvoicesController {
     schema: {
       type: 'object',
       properties: {
-        invoiceNumber: { type: 'string', nullable: true },
         invoiceDate: { type: 'string', format: 'date', nullable: true },
         terms: { type: 'string', nullable: true },
         supplierName: { type: 'string', nullable: true },
