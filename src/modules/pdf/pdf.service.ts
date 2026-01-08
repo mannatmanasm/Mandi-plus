@@ -257,6 +257,8 @@ export class PdfService {
         const qty = Number(invoiceData.quantity || 0);
         const rate = Number(invoiceData.rate || 0);
         const amount = Number(invoiceData.amount || 0);
+        const premiumAmount = Number((amount * 0.002).toFixed(2)); // 0.2%
+
         const productName = Array.isArray(invoiceData.productName)
           ? invoiceData.productName[0]
           : invoiceData.productName;
@@ -271,8 +273,8 @@ export class PdfService {
           })
           .text(invoiceData.hsnCode || '-', cols.hsn, rowY + 9)
           .text(qty.toString(), cols.qty, rowY + 9)
-          .text(rate.toFixed(2), cols.rate, rowY + 9)
-          .text(amount.toFixed(2), cols.amount, rowY + 9, {
+          .text(`Rs. ${rate.toFixed(2)}`, cols.rate, rowY + 9)
+          .text(`Rs. ${amount.toFixed(2)}`, cols.amount, rowY + 9, {
             width: 100,
             align: 'left',
             lineBreak: false,
@@ -341,7 +343,30 @@ export class PdfService {
           .fontSize(10)
           .font('Helvetica-Bold')
           .text(' Total', subTotalX + 10, y + 15);
-        doc.fontSize(12).text(amount.toFixed(2), subTotalX + 10, y + 33);
+        doc
+          .fontSize(12)
+          .text(`Rs. ${amount.toFixed(2)}`, subTotalX + 10, y + 33);
+        // Premium Amount (0.2%)
+        const premiumBoxY = y + 65;
+
+        doc
+          .roundedRect(subTotalX, premiumBoxY, 145, 60, 5)
+          .strokeColor('#CCCCCC')
+          .lineWidth(0.5)
+          .stroke();
+
+        doc
+          .fontSize(10)
+          .font('Helvetica-Bold')
+          .text(' Insurance Amount (0.2%)', subTotalX + 10, premiumBoxY + 15);
+
+        doc
+          .fontSize(12)
+          .text(
+            `Rs ${premiumAmount.toFixed(2)}`,
+            subTotalX + 10,
+            premiumBoxY + 33,
+          );
 
         y += notesBoxHeight + 15; // Reduced spacing from 25 to 15
 
@@ -400,7 +425,7 @@ export class PdfService {
         doc
           .fontSize(9)
           .font('Helvetica-Bold')
-          .text('Terms and Conditions', RIGHT_COL_X, y);
+          .text('Insurance Terms and Conditions', RIGHT_COL_X, y);
 
         const termsBoxY = y + 15;
         const PADDING = 10;
