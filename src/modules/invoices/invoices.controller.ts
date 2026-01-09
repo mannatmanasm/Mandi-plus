@@ -131,6 +131,41 @@ export class InvoicesController {
     return this.invoicesService.findOne(id);
   }
 
+  @Post(':id/weighment-slips')
+  @HttpCode(HttpStatus.OK)
+  @UseInterceptors(FilesInterceptor('weighmentSlips', 10))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary: 'Upload new weighment slips to an invoice',
+    description:
+      'Uploads new weighment slip images to an existing invoice. New slips REPLACE existing ones (not append). PDF will be regenerated automatically with only the new weighment slips.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        weighmentSlips: {
+          type: 'array',
+          items: { type: 'string', format: 'binary' },
+          description: 'Weighment slip image files (up to 10). These will replace all existing weighment slips.',
+        },
+      },
+      required: ['weighmentSlips'],
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Weighment slips uploaded and PDF regeneration queued successfully',
+  })
+  @ApiResponse({ status: 404, description: 'Invoice not found' })
+  @ApiResponse({ status: 400, description: 'No files provided' })
+  async uploadWeighmentSlips(
+    @Param('id') invoiceId: string,
+    @UploadedFiles() weighmentSlips: Express.Multer.File[],
+  ) {
+    return this.invoicesService.uploadWeighmentSlips(invoiceId, weighmentSlips);
+  }
+
   @Post('regenerate')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({

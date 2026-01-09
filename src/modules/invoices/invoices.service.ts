@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -322,6 +323,47 @@ export class InvoicesService {
   async remove(id: string): Promise<void> {
     const invoice = await this.findOne(id);
     await this.invoiceRepository.remove(invoice);
+  }
+
+  /**
+   * Upload new weighment slips to an existing invoice and regenerate PDF.
+   * New slips REPLACE existing ones (not append).
+   * The regenerated PDF will contain only the new weighment slips.
+   */
+  async uploadWeighmentSlips(
+    invoiceId: string,
+    weighmentSlipFiles: Express.Multer.File[],
+  ): Promise<Invoice> {
+    const invoice = await this.invoiceRepository.findOne({
+      where: { id: invoiceId },
+      relations: ['truck'],
+    });
+
+    if (!invoice) {
+      throw new NotFoundException('Invoice not found');
+    }
+
+    if (!weighmentSlipFiles || weighmentSlipFiles.length === 0) {
+      throw new BadRequestException('No weighment slip files provided');
+    }
+
+    // Upload new weighment slips
+    const newUrls = await this.storageService.uploadMultipleFiles(
+      weighmentSlipFiles,
+      'weighment-slips',
+    );
+
+    // REPLACE existing weighment slips with new ones
+    invoice.weighmentSlipUrls = newUrls;
+
+    const updatedInvoice = await this.invoiceRepository.save(invoice);
+
+    // Regenerate PDF - it will use the updated weighmentSlipUrls (only new ones)
+    await this.invoicePdfQueue.add('generate-pdf', {
+      invoiceId: updatedInvoice.id,
+    });
+
+    return updatedInvoice;
   }
 
   /**
