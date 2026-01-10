@@ -12,6 +12,7 @@ import { PdfModule } from './modules/pdf/pdf.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { AuthModule } from './modules/auths/auth.module';
 import { UsersModule } from './modules/users/users.module';
+import { ClaimRequestsModule } from './modules/claim-requests/claim-requests.module';
 
 import { User } from './entities/user.entity';
 import { OtpVerification } from './entities/otp-verification.entity';
@@ -52,6 +53,7 @@ import { UserSession } from './entities/user-session.entity';
     StorageModule,
     PdfModule,
     QueueModule,
+    ClaimRequestsModule,
   ],
 })
 export class AppModule {}

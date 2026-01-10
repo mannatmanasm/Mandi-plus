@@ -3,6 +3,7 @@ import {
   PrimaryGeneratedColumn,
   Column,
   ManyToOne,
+  OneToOne,
   CreateDateColumn,
   UpdateDateColumn,
   Index,
@@ -10,6 +11,7 @@ import {
 import { Truck } from './truck.entity';
 import { User } from './user.entity';
 import { InvoiceType } from 'src/common/enums/invoice-type.enum';
+import { ClaimRequest } from './claim-request.entity';
 
 @Entity('invoices')
 @Index(['invoiceNumber'], { unique: true })
@@ -175,6 +177,13 @@ export class Invoice {
 
   @Column({ type: 'text', nullable: true })
   pdfUrl: string | null;
+
+  // ===============================
+  // CLAIM REQUEST RELATION (One-to-One)
+  // ===============================
+
+  @OneToOne(() => ClaimRequest, (claimRequest) => claimRequest.invoice)
+  claimRequest: ClaimRequest | null;
 
   // ===============================
   // SYSTEM
