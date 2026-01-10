@@ -9,7 +9,7 @@ import {
 } from 'typeorm';
 import { Truck } from './truck.entity';
 import { User } from './user.entity';
-import { InvoiceType } from 'src/common/enums/invoice-type.enum';
+import { InvoiceType } from '../common/enums/invoice-type.enum';
 
 @Entity('invoices')
 @Index(['invoiceNumber'], { unique: true })
