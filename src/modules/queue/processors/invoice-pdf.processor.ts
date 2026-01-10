@@ -38,7 +38,8 @@ export class InvoicePdfProcessor extends WorkerHost {
       });
 
       if (!invoice) {
-        throw new Error(`Invoice with ID ${invoiceId} not found`);
+        this.logger.warn(`Invoice ${invoiceId} no longer exists. Skipping job.`);
+        return;
       }
 
       // Generate PDF
