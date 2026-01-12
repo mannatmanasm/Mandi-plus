@@ -8,7 +8,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Invoice } from './invoice.entity';
-import { ClaimStatus } from 'src/common/enums/claim-status.enum';
+import { ClaimStatus } from '../common/enums/claim-status.enum';
 
 @Entity('claim_requests')
 export class ClaimRequest {
@@ -94,4 +94,3 @@ export class ClaimRequest {
   @UpdateDateColumn()
   updatedAt: Date;
 }
-

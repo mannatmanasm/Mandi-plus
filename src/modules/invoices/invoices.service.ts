@@ -20,6 +20,7 @@ import { FilterInvoicesDto } from './dto/filter-invoices.dto';
 import { ExportInvoicesDto } from './dto/export-invoices.dto';
 import * as ExcelJS from 'exceljs';
 import { RegenerateInvoiceDto } from './dto/regenerate-invoice.dto';
+import { normalizeVehicleNumber } from 'src/utils/vehicle-normalizer';
 
 @Injectable()
 export class InvoicesService {
@@ -77,15 +78,20 @@ export class InvoicesService {
 
     // 3. Handle truck
     let truck: Truck | null = null;
+
     if (createInvoiceDto.truckNumber) {
+      const normalizedTruckNumber = normalizeVehicleNumber(
+        createInvoiceDto.truckNumber,
+      );
+
       truck = await this.truckRepository.findOne({
-        where: { truckNumber: createInvoiceDto.truckNumber },
+        where: { truckNumber: normalizedTruckNumber },
       });
 
       if (!truck) {
         truck = await this.truckRepository.save(
           this.truckRepository.create({
-            truckNumber: createInvoiceDto.truckNumber,
+            truckNumber: normalizedTruckNumber,
             ownerName: 'Unknown',
             ownerContactNumber: '0000000000',
             driverName: 'Unknown',
@@ -134,7 +140,9 @@ export class InvoicesService {
       rate: createInvoiceDto.rate,
       amount: createInvoiceDto.amount,
 
-      vehicleNumber: createInvoiceDto.vehicleNumber || null,
+      vehicleNumber: createInvoiceDto.vehicleNumber
+        ? normalizeVehicleNumber(createInvoiceDto.vehicleNumber)
+        : null,
       weighmentSlipNote: createInvoiceDto.weighmentSlipNote || null,
       weighmentSlipUrls,
 
