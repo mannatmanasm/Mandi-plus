@@ -1,7 +1,8 @@
-import pushenv from 'pushenv';
-import { DataSource } from 'typeorm';
+import { config } from 'pushenv';
 
-pushenv.config();
+config();
+
+import { DataSource } from 'typeorm';
 
 export default new DataSource({
   type: 'postgres',
