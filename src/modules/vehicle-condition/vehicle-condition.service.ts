@@ -67,10 +67,7 @@ export class VehicleConditionService {
   }
 
   async verifyVehicle(vehicleNumber: string) {
-    const normalized = vehicleNumber
-      .replace(/[^A-Z0-9]/gi, '')
-      .toUpperCase()
-      .trim();
+    const normalized = normalizeVehicleNumber(vehicleNumber);
 
     // 1️⃣ Truck lookup (claim check)
     const truck = await this.truckRepo.findOne({
@@ -158,9 +155,7 @@ Claim History – ${d.claim}
 ${data.verified ? '✅' : '❌'} You ${
       data.verified ? 'can take' : 'cannot take'
     } **MandiPlus Verified Vehicle**
-${data.verified ? '✅' : '❌'} आप ${
-      data.verified ? '' : 'नहीं'
-    } **MandiPlus सत्यापित वाहन** ले सकते हैं
+${data.verified ? '✅' : '❌'} आप **MandiPlus सत्यापित वाहन**${data.verified ? '' : ' नहीं'} ले सकते हैं
   `.trim();
   }
 }
