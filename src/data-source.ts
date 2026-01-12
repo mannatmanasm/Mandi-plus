@@ -1,4 +1,7 @@
-import 'dotenv/config';
+import { config } from 'pushenv';
+
+config();
+
 import { DataSource } from 'typeorm';
 
 export default new DataSource({

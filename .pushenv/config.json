@@ -1,0 +1,10 @@
+{
+  "projectId": "env_mkaxpdgf_82fdd1ccab8dbae1",
+  "envPath": ".env",
+  "createdAt": "2026-01-12T09:02:09.763Z",
+  "stages": {
+    "development": {
+      "envPath": ".env"
+    }
+  }
+}

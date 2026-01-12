@@ -8,7 +8,7 @@
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "start": "node --max-old-space-size=460 dist/main",
+    "start": "node dist/main.js",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node --max-old-space-size=460 dist/main",
@@ -22,8 +22,7 @@
     "migration:generate": "pnpm typeorm migration:generate",
     "migration:run": "pnpm typeorm migration:run",
     "migration:revert": "pnpm typeorm migration:revert"
-  }
-  ,
+  },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.957.0",
     "@aws-sdk/s3-request-presigner": "^3.957.0",
@@ -55,6 +54,7 @@
     "passport-jwt": "^4.0.1",
     "pdfkit": "^0.17.2",
     "pg": "^8.16.3",
+    "pushenv": "^1.2.4",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "sharp": "^0.34.5",

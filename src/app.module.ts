@@ -12,10 +12,13 @@ import { PdfModule } from './modules/pdf/pdf.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { AuthModule } from './modules/auths/auth.module';
 import { UsersModule } from './modules/users/users.module';
+import { ClaimRequestsModule } from './modules/claim-requests/claim-requests.module';
 
 import { User } from './entities/user.entity';
 import { OtpVerification } from './entities/otp-verification.entity';
 import { UserSession } from './entities/user-session.entity';
+import { VehicleCondition } from './entities/vehicle-condition.entity';
+import { VehicleConditionModule } from './modules/vehicle-condition/vehicle-condition.module';
 
 @Module({
   imports: [
@@ -52,6 +55,8 @@ import { UserSession } from './entities/user-session.entity';
     StorageModule,
     PdfModule,
     QueueModule,
+    ClaimRequestsModule,
+    VehicleConditionModule,
   ],
 })
 export class AppModule {}

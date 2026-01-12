@@ -11,7 +11,6 @@ import { TruckTrackerController } from './truck-tracker.controller';
   imports: [TypeOrmModule.forFeature([Truck]), ConfigModule],
   controllers: [TrucksController, TruckTrackerController],
   providers: [TrucksService, TruckTrackerService],
-  exports: [TrucksService, TruckTrackerService],
+  exports: [TrucksService, TruckTrackerService, TypeOrmModule],
 })
 export class TrucksModule {}
-
