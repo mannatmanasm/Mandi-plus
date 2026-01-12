@@ -1,12 +1,12 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
-import dotenv from 'dotenv';
+import pushenv from 'pushenv';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import { ConfigService } from '@nestjs/config';
 
-dotenv.config();
+pushenv.config();
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {

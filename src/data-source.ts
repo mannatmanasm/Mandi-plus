@@ -1,5 +1,7 @@
-import 'dotenv/config';
+import pushenv from 'pushenv';
 import { DataSource } from 'typeorm';
+
+pushenv.config();
 
 export default new DataSource({
   type: 'postgres',
