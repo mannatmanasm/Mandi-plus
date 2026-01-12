@@ -66,7 +66,6 @@ export class ClaimFormPdfProcessor extends WorkerHost {
 
       // Generate PDF buffer using PdfService
       const pdfBuffer = await this.pdfService.generateDamageCertificatePdf({
-        claimRequestId,
         invoiceNumber: invoice.invoiceNumber,
         invoiceDate: invoice.invoiceDate,
         truckNumber: invoice.truck?.truckNumber || '',
