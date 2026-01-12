@@ -17,6 +17,8 @@ import { ClaimRequestsModule } from './modules/claim-requests/claim-requests.mod
 import { User } from './entities/user.entity';
 import { OtpVerification } from './entities/otp-verification.entity';
 import { UserSession } from './entities/user-session.entity';
+import { VehicleCondition } from './entities/vehicle-condition.entity';
+import { VehicleConditionModule } from './modules/vehicle-condition/vehicle-condition.module';
 
 @Module({
   imports: [
@@ -54,6 +56,7 @@ import { UserSession } from './entities/user-session.entity';
     PdfModule,
     QueueModule,
     ClaimRequestsModule,
+    VehicleConditionModule,
   ],
 })
 export class AppModule {}

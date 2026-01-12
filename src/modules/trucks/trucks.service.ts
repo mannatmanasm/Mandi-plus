@@ -8,6 +8,7 @@ import { Repository } from 'typeorm';
 import { Truck } from '../../entities/truck.entity';
 import { CreateTruckDto } from './dto/create-truck.dto';
 import { UpdateTruckDto } from './dto/update-truck.dto';
+import { normalizeVehicleNumber } from 'src/utils/vehicle-normalizer';
 
 @Injectable()
 export class TrucksService {
@@ -18,15 +19,23 @@ export class TrucksService {
 
   async create(createTruckDto: CreateTruckDto): Promise<Truck> {
     // Check if truck number already exists
+    const normalizedTruckNumber = normalizeVehicleNumber(
+      createTruckDto.truckNumber,
+    );
+
     const existingTruck = await this.truckRepository.findOne({
-      where: { truckNumber: createTruckDto.truckNumber },
+      where: { truckNumber: normalizedTruckNumber },
     });
 
     if (existingTruck) {
       throw new ConflictException('Truck with this number already exists');
     }
 
-    const truck = this.truckRepository.create(createTruckDto);
+    const truck = this.truckRepository.create({
+      ...createTruckDto,
+      truckNumber: normalizedTruckNumber,
+    });
+
     return await this.truckRepository.save(truck);
   }
 
