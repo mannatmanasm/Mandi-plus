@@ -18,6 +18,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     BullModule.registerQueue({
       name: 'invoice-pdf',
     }),
+    BullModule.registerQueue({
+      name: 'claim-form-pdf',
+    }),
   ],
   exports: [BullModule],
 })

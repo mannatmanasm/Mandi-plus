@@ -14,6 +14,9 @@ import { UpdateClaimStatusDto } from './dto/update-claim-status.dto';
 import { FilterClaimRequestsDto } from './dto/filter-claim-requests.dto';
 import { ClaimStatus } from '../../common/enums/claim-status.enum';
 import { StorageService } from '../storage/storage.service';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import { CreateDamageFormDto } from './dto/create-damage-form.dto';
 
 @Injectable()
 export class ClaimRequestsService {
@@ -25,6 +28,8 @@ export class ClaimRequestsService {
     @InjectRepository(Truck)
     private readonly truckRepository: Repository<Truck>,
     private readonly storageService: StorageService,
+    @InjectQueue('claim-form-pdf')
+    private readonly claimFormPdfQueue: Queue,
   ) {}
 
   /**
@@ -169,6 +174,54 @@ export class ClaimRequestsService {
     ];
 
     return await this.claimRequestRepository.save(claimRequest);
+  }
+
+  /**
+   * Queue damage certificate PDF generation for a claim request.
+   * Uses the linked invoice (invoiceNumber, truckNumber, user mobile) +
+   * user-provided damage form fields.
+   */
+  async createDamageFormAndQueuePdf(
+    claimRequestId: string,
+    dto: CreateDamageFormDto,
+  ): Promise<ClaimRequest> {
+    const claimRequest = await this.claimRequestRepository.findOne({
+      where: { id: claimRequestId },
+      relations: ['invoice', 'invoice.truck', 'invoice.user'],
+    });
+
+    if (!claimRequest) {
+      throw new NotFoundException(
+        `Claim request with ID ${claimRequestId} not found`,
+      );
+    }
+
+    const invoice = claimRequest.invoice;
+
+    if (!invoice) {
+      throw new BadRequestException(
+        `Claim request ${claimRequestId} is not linked to an invoice`,
+      );
+    }
+
+    await this.claimFormPdfQueue.add('generate-damage-form-pdf', {
+      claimRequestId,
+      damageCertificateDate: dto.damageCertificateDate,
+      transportReceiptMemoNo: dto.transportReceiptMemoNo,
+      transportReceiptDate: dto.transportReceiptDate,
+      loadedWeightKg: dto.loadedWeightKg,
+      productName: dto.productName,
+      fromParty: dto.fromParty,
+      forParty: dto.forParty,
+      accidentDate: dto.accidentDate,
+      accidentLocation: dto.accidentLocation,
+      accidentDescription: dto.accidentDescription,
+      agreedDamageAmountNumber: dto.agreedDamageAmountNumber,
+      agreedDamageAmountWords: dto.agreedDamageAmountWords,
+      authorizedSignatoryName: dto.authorizedSignatoryName,
+    });
+
+    return claimRequest;
   }
 
   /**

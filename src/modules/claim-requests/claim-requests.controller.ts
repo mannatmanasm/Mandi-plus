@@ -28,6 +28,7 @@ import { CreateClaimByTruckDto } from './dto/create-claim-by-truck.dto';
 import { UpdateClaimStatusDto } from './dto/update-claim-status.dto';
 import { FilterClaimRequestsDto } from './dto/filter-claim-requests.dto';
 import { ClaimStatus } from '../../common/enums/claim-status.enum';
+import { CreateDamageFormDto } from './dto/create-damage-form.dto';
 
 @ApiTags('Claim Requests')
 @Controller('claim-requests')
@@ -197,6 +198,35 @@ export class ClaimRequestsController {
     files: Express.Multer.File[],
   ) {
     return this.claimRequestsService.uploadSupportingMedia(id, files);
+  }
+
+  @Post(':id/damage-form')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({
+    summary: 'Submit damage certificate form for a claim request',
+    description:
+      'Takes damage certificate details and queues a background job to generate a damage certificate PDF and store its URL in claimFormUrl.',
+  })
+  @ApiResponse({
+    status: 202,
+    description:
+      'Damage form accepted. PDF generation has been queued in the background.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Claim request not found',
+  })
+  async createDamageForm(
+    @Param('id') id: string,
+    @Body() dto: CreateDamageFormDto,
+  ) {
+    const claimRequest =
+      await this.claimRequestsService.createDamageFormAndQueuePdf(id, dto);
+
+    return {
+      message: 'Damage form accepted. PDF generation queued.',
+      claimRequestId: claimRequest.id,
+    };
   }
 }
 

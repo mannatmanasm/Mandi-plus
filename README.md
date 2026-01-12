@@ -1,98 +1,125 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+## Mandi Plus Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Node.js / NestJS backend for the Mandi Plus platform. This is a **private company project** – source, environment configuration, and credentials must **not** be shared outside the team.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## Tech Stack
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- **Runtime**: Node.js (NestJS)
+- **Database**: PostgreSQL (TypeORM)
+- **Queue**: BullMQ + Redis
+- **Storage**: Cloudinary (files & PDFs)
+- **Docs**: Swagger (`/api/docs`)
 
-## Project setup
+---
 
-```bash
-$ pnpm install
-```
+## Prerequisites
 
-## Compile and run the project
+- Node.js (LTS)
+- pnpm
+- PostgreSQL
+- Redis
 
-```bash
-# development
-$ pnpm run start
+Optional (for local file uploads to work):
 
-# watch mode
-$ pnpm run start:dev
+- Cloudinary account + API keys
 
-# production mode
-$ pnpm run start:prod
-```
+---
 
-## Run tests
+## Environment Setup
+
+This project uses **pushenv** to sync `.env.*` files securely inside the team.
+
+### 1. Install pushenv (once)
 
 ```bash
-# unit tests
-$ pnpm run test
-
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+npm install -g pushenv
 ```
 
-## Deployment
+### 2. Pull env files
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Ask your team for the **pushenv passphrase** for this project.  
+From the project root (`Mandi-plus`), run:
 
 ```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+pushenv pull
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+When prompted, enter the passphrase shared by the team.  
+This will download the required `.env.*` files (for example: `.env.development`, `.env.production`) directly into the project.
 
-## Resources
+> Do **not** commit these `.env` files. They are already ignored by git.
 
-Check out a few resources that may come in handy when working with NestJS:
+---
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+## Running the Project
 
-## Support
+Install dependencies:
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+```bash
+pnpm install
+```
 
-## Stay in touch
+Run database migrations:
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+```bash
+pnpm run migration:run
+```
 
-## License
+Start the dev server:
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+```bash
+pnpm run start:dev
+```
+
+The API will be available at:
+
+- REST: `http://localhost:3005`
+- Swagger UI: `http://localhost:3005/api/docs`
+
+---
+
+## Key Modules (High Level)
+
+- **Users**: user management, identities (SUPPLIER, BUYER, TRANSPORTER, AGENT)
+- **Trucks**: truck management, claim count tracking
+- **Invoices**:
+  - Create / update invoices
+  - Upload weighment slips (Cloudinary)
+  - Async invoice PDF generation via BullMQ
+  - Export invoices to Excel
+- **Claim Requests**:
+  - One-to-one with `Invoice`
+  - Create claim request by truck number (latest invoice)
+  - Admin listing + filters (status, invoice, truck)
+  - Update claim status (pending → inprogress → surveyor_assigned → completed)
+  - Upload supporting media (stored on Cloudinary)
+
+For detailed change history, see `docs/changes/`.
+
+---
+
+## Conventions
+
+- **Code style**: ESLint + Prettier
+- **Migrations**: TypeORM (`src/migrations/*`)
+- **Docs**: Any major API / entity / config change should:
+  - Update or add a markdown file under `docs/changes/changes-YYYY-MM-DD.md`
+  - Briefly describe:
+    - What changed
+    - Why it changed
+    - How it affects existing code / migrations
+    - Any developer notes (commands to run, things to test)
+
+---
+
+## Safety Notes
+
+- Never hardcode secrets in the codebase. Always use env vars synced via **pushenv**.
+- This repo is **private**; do not upload it (or any generated env files) to public GitHub or any external service.
+- For production changes, always:
+  - Run migrations on a staging DB first
+  - Verify PDFs, uploads, and queues in staging
+
+

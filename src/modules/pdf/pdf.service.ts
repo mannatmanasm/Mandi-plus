@@ -537,4 +537,173 @@ export class PdfService {
       }
     });
   }
+
+  async generateDamageCertificatePdf(payload: {
+    claimRequestId: string;
+    invoiceNumber: string;
+    invoiceDate: Date;
+    truckNumber: string;
+    userMobileNumber: string;
+    damageCertificateDate: string;
+    transportReceiptMemoNo: string;
+    transportReceiptDate: string;
+    loadedWeightKg: number;
+    productName: string;
+    fromParty: string;
+    forParty: string;
+    accidentDate: string;
+    accidentLocation: string;
+    accidentDescription: string;
+    agreedDamageAmountNumber?: number;
+    agreedDamageAmountWords?: string;
+    authorizedSignatoryName?: string;
+  }): Promise<Buffer> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const margin = 40;
+        const doc = new PDFDocument({ margin, size: 'A4' });
+        const buffers: Buffer[] = [];
+
+        doc.on('data', buffers.push.bind(buffers));
+        doc.on('end', () => resolve(Buffer.concat(buffers)));
+        doc.on('error', reject);
+
+        const pageWidth = doc.page.width - margin * 2;
+
+        // Header: DAMAGE CERTIFICATE
+        doc
+          .fontSize(14)
+          .font('Helvetica-Bold')
+          .text(
+            'DAMAGE CERTIFICATE (from Transporter Agent / Owner)',
+            margin,
+            margin,
+            { width: pageWidth, align: 'center' },
+          );
+
+        let y = margin + 40;
+        doc.fontSize(10).font('Helvetica');
+
+        const lineGap = 6;
+
+        const w = (label: string, value: string) => {
+          doc
+            .font('Helvetica')
+            .text(label, margin, y, { continued: true })
+            .font('Helvetica-Bold')
+            .text(value);
+          y += lineGap;
+        };
+
+        w(
+          'We certified that on dated',
+          ` ${payload.damageCertificateDate || ''}`,
+        );
+        w(
+          'Under our Transport Receipt No.',
+          ` ${payload.transportReceiptMemoNo || ''}   Date ${payload.transportReceiptDate || ''}`,
+        );
+
+        w(
+          'We have loaded',
+          ` ${payload.loadedWeightKg || 0} KG Pieces / Boxes / Bags of ${payload.productName || ''}`,
+        );
+
+        w('From M/s', ` ${payload.fromParty || ''}`);
+        w('For M/s', ` ${payload.forParty || ''}`);
+        w('As per Invoice No.', ` ${payload.invoiceNumber || ''}`);
+        w('In Truck No.', ` ${payload.truckNumber || '-'}`);
+
+        y += lineGap;
+        w(
+          'Unfortunately, a truck met with an accident near',
+          ` ${payload.accidentLocation || ''}`,
+        );
+        w('on Date', ` ${payload.accidentDate || ''}`);
+
+        doc
+          .font('Helvetica')
+          .text(
+            'Vehicle',
+            margin,
+            y,
+            { continued: true },
+          )
+          .font('Helvetica-Bold')
+          .text(` ${payload.accidentDescription || ''}`);
+        y = doc.y + lineGap;
+
+        const amountNumber =
+          typeof payload.agreedDamageAmountNumber === 'number'
+            ? payload.agreedDamageAmountNumber
+            : undefined;
+
+        doc
+          .font('Helvetica')
+          .text(
+            'We agreed the damages as per survey report for Rs.',
+            margin,
+            y,
+            { continued: true },
+          )
+          .font('Helvetica-Bold')
+          .text(
+            amountNumber !== undefined ? ` ${amountNumber.toFixed(2)}` : ' ________',
+          );
+
+        y = doc.y + lineGap;
+
+        if (payload.agreedDamageAmountWords) {
+          doc
+            .font('Helvetica')
+            .text('Rupees (in words): ', margin, y, { continued: true })
+            .font('Helvetica-Bold')
+            .text(payload.agreedDamageAmountWords);
+          y = doc.y + lineGap;
+        }
+
+        // Footer: authorized signatory + contact
+        y += 40;
+        const signName = payload.authorizedSignatoryName || '';
+
+        if (signName) {
+          doc
+            .font('Helvetica-Bold')
+            .text(signName, margin, y, { width: pageWidth, align: 'right' });
+          y += lineGap;
+        }
+
+        doc
+          .font('Helvetica')
+          .text(
+            '(Authorized Signatory - Transporter Agent / Owner)',
+            margin,
+            y,
+            { width: pageWidth, align: 'right' },
+          );
+
+        y += lineGap * 2;
+
+        if (payload.userMobileNumber) {
+          doc
+            .fontSize(8)
+            .font('Helvetica')
+            .text(
+              `Contact: ${payload.userMobileNumber}`,
+              margin,
+              y,
+              { width: pageWidth, align: 'right' },
+            );
+        }
+
+        doc.end();
+      } catch (err: any) {
+        reject(
+          new BadRequestException(
+            `Damage certificate PDF generation failed: ${err?.message || err}`,
+          ),
+        );
+      }
+    });
+  }
 }
