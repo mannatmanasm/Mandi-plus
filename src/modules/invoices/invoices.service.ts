@@ -486,6 +486,10 @@ export class InvoicesService {
       invoices = await this.filterInvoices(filterDto);
     }
 
+    invoices = invoices.filter(
+      (invoice) => invoice.pdfUrl !== null && invoice.pdfUrl !== '',
+    );
+
     // Create Excel workbook
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Invoices');
