@@ -560,7 +560,7 @@ export class PdfService {
   }): Promise<Buffer> {
     return new Promise(async (resolve, reject) => {
       try {
-        const margin = 40;
+        const margin = 50;
         const doc = new PDFDocument({ margin, size: 'A4' });
         const buffers: Buffer[] = [];
 
@@ -569,112 +569,312 @@ export class PdfService {
         doc.on('error', reject);
 
         const pageWidth = doc.page.width - margin * 2;
+        const rightEdgeX = margin + pageWidth;
 
-        // Header: DAMAGE CERTIFICATE
+        // --- HEADER SECTION ---
+        const HEADER_Y = margin;
         doc
-          .fontSize(14)
+          .fontSize(16)
           .font('Helvetica-Bold')
+          .fillColor('#000000')
           .text(
-            'DAMAGE CERTIFICATE (from Transporter Agent / Owner)',
+            'DAMAGE CERTIFICATE',
             margin,
-            margin,
+            HEADER_Y,
             { width: pageWidth, align: 'center' },
           );
 
-        let y = margin + 40;
-        doc.fontSize(10).font('Helvetica');
-
-        const lineGap = 6;
-
-        const w = (label: string, value: string) => {
-          doc
-            .font('Helvetica')
-            .text(label, margin, y, { continued: true })
-            .font('Helvetica-Bold')
-            .text(value);
-          y += lineGap;
-        };
-
-        w(
-          'We certified that on dated',
-          ` ${payload.damageCertificateDate || ''}`,
-        );
-        w(
-          'Under our Transport Receipt No.',
-          ` ${payload.transportReceiptMemoNo || ''}   Date ${payload.transportReceiptDate || ''}`,
-        );
-
-        w(
-          'We have loaded',
-          ` ${payload.loadedWeightKg || 0} KG Pieces / Boxes / Bags of ${payload.productName || ''}`,
-        );
-
-        w('From M/s', ` ${payload.fromParty || ''}`);
-        w('For M/s', ` ${payload.forParty || ''}`);
-        w('As per Invoice No.', ` ${payload.invoiceNumber || ''}`);
-        w('In Truck No.', ` ${payload.truckNumber || '-'}`);
-
-        y += lineGap;
-        w(
-          'Unfortunately, a truck met with an accident near',
-          ` ${payload.accidentLocation || ''}`,
-        );
-        w('on Date', ` ${payload.accidentDate || ''}`);
-
         doc
+          .fontSize(10)
           .font('Helvetica')
           .text(
-            'Vehicle',
+            '(from Transporter Agent / Owner)',
             margin,
-            y,
-            { continued: true },
-          )
-          .font('Helvetica-Bold')
-          .text(` ${payload.accidentDescription || ''}`);
-        y = doc.y + lineGap;
+            HEADER_Y + 22,
+            { width: pageWidth, align: 'center' },
+          );
 
+        // Horizontal line after header
+        let y = HEADER_Y + 50;
+        doc
+          .moveTo(margin, y)
+          .lineTo(rightEdgeX, y)
+          .strokeColor('#000000')
+          .lineWidth(0.5)
+          .stroke();
+
+        y += 30;
+
+        // Form-style layout constants
+        const labelStartX = margin;
+        const baseLineSpacing = 25;
+        const fontSize = 10;
+        const valueGap = 8; // Gap between label and value
+
+        // Helper function to add a form field with proper spacing
+        const addFormField = (
+          label: string,
+          value: string,
+          isBoldValue = true,
+          allowWrap = true,
+        ) => {
+          doc.fontSize(fontSize).font('Helvetica').fillColor('#000000');
+
+          // Calculate label width
+          const labelWidth = doc.widthOfString(label);
+          const valueStartX = labelStartX + labelWidth + valueGap;
+          const maxValueWidth = rightEdgeX - valueStartX - 15; // Extra margin for safety
+
+          // Draw label
+          doc.text(label, labelStartX, y);
+
+          // Draw value
+          if (!value) {
+            y += baseLineSpacing;
+            return;
+          }
+
+          doc.font(isBoldValue ? 'Helvetica-Bold' : 'Helvetica');
+
+          if (allowWrap) {
+            // Calculate how many lines the text will take
+            const textHeight = doc.heightOfString(value, {
+              width: maxValueWidth,
+            });
+            const lineHeight = fontSize * 1.2; // Approximate line height
+            const numLines = Math.ceil(textHeight / lineHeight);
+
+            // Draw the text
+            doc.text(value, valueStartX, y, {
+              width: maxValueWidth,
+              lineGap: 5,
+            });
+
+            // Update y position - use actual calculated height
+            y += Math.max(baseLineSpacing, textHeight + 10);
+          } else {
+            doc.text(value, valueStartX, y);
+            y += baseLineSpacing;
+          }
+        };
+
+        // Certificate date - date on right side
+        doc
+          .fontSize(fontSize)
+          .font('Helvetica')
+          .fillColor('#000000')
+          .text('We certified that on dated', labelStartX, y);
+        
+        // Date on right side
+        const certDateText = payload.damageCertificateDate || '';
+        doc.font('Helvetica-Bold');
+        const certDateWidth = doc.widthOfString(certDateText);
+        doc.text(certDateText, rightEdgeX - certDateWidth, y);
+        
+        y += baseLineSpacing + 3;
+
+        // Transport receipt - using "Transport Lorry Receipt No."
+        doc
+          .fontSize(fontSize)
+          .font('Helvetica')
+          .fillColor('#000000')
+          .text('Under our Transport Lorry Receipt No.', labelStartX, y);
+
+        const receiptLabelWidth = doc.widthOfString('Under our Transport Lorry Receipt No.');
+        const receiptValueX = labelStartX + receiptLabelWidth + valueGap;
+
+        // Direct receipt number (remove any "Memo No." prefix if present)
+        let receiptNumber = payload.transportReceiptMemoNo || '';
+        receiptNumber = receiptNumber.replace(/^Memo\s*No\.?\s*/i, '').trim();
+        doc
+          .font('Helvetica-Bold')
+          .text(receiptNumber, receiptValueX, y);
+
+        // Date on right side
+        const receiptDateText = payload.transportReceiptDate || '';
+        const receiptDateLabel = 'Date';
+        doc.font('Helvetica');
+        const receiptDateLabelWidth = doc.widthOfString(receiptDateLabel);
+        doc.font('Helvetica-Bold');
+        const receiptDateValueWidth = doc.widthOfString(receiptDateText);
+        const receiptDateX = rightEdgeX - receiptDateValueWidth - receiptDateLabelWidth - 15;
+        
+        doc.font('Helvetica').text(receiptDateLabel, receiptDateX, y);
+        doc
+          .font('Helvetica-Bold')
+          .text(receiptDateText, rightEdgeX - receiptDateValueWidth, y);
+
+        y += baseLineSpacing + 3;
+
+        // Loaded goods - special handling with better spacing
+        doc
+          .fontSize(fontSize)
+          .font('Helvetica')
+          .fillColor('#000000')
+          .text('We have loaded', labelStartX, y);
+
+        const loadedLabelWidth = doc.widthOfString('We have loaded');
+        let currentX = labelStartX + loadedLabelWidth + valueGap;
+
+        // Weight
+        const weightText = `${payload.loadedWeightKg || 0} KG`;
+        doc.font('Helvetica-Bold').text(weightText, currentX, y);
+        currentX += doc.widthOfString(weightText) + 5;
+
+        // "Pieces / Boxes / Bags of"
+        const piecesText = ' Pieces / Boxes / Bags of ';
+        doc.font('Helvetica').text(piecesText, currentX, y);
+        currentX += doc.widthOfString(piecesText);
+
+        // Product name
+        doc
+          .font('Helvetica-Bold')
+          .text(payload.productName || '', currentX, y, {
+            width: rightEdgeX - currentX - 10,
+          });
+
+        y += baseLineSpacing + 3;
+
+        // From M/s - with wrapping
+        addFormField('From M/s', payload.fromParty || '', true, true);
+
+        // For M/s - with wrapping
+        addFormField('For M/s', payload.forParty || '', true, true);
+
+        // Invoice No
+        addFormField('As per Invoice No.', payload.invoiceNumber || '', true, false);
+
+        // Truck No
+        addFormField('In Truck No.', payload.truckNumber || '-', true, false);
+
+        y += 15; // Section spacing
+
+        // Accident details section
+        doc
+          .fontSize(fontSize)
+          .font('Helvetica')
+          .fillColor('#000000')
+          .text('Unfortunately, a truck met with an accident near', labelStartX, y);
+
+        const accidentLabelWidth = doc.widthOfString(
+          'Unfortunately, a truck met with an accident near',
+        );
+        const accidentValueX = labelStartX + accidentLabelWidth + valueGap;
+        const accidentValueWidth = rightEdgeX - accidentValueX - 15;
+
+        doc.font('Helvetica-Bold');
+        const accidentTextHeight = doc.heightOfString(payload.accidentLocation || '', {
+          width: accidentValueWidth,
+        });
+        doc.text(payload.accidentLocation || '', accidentValueX, y, {
+          width: accidentValueWidth,
+          lineGap: 5,
+        });
+        y += Math.max(baseLineSpacing, accidentTextHeight + 10);
+
+        // Accident date - date on right side
+        doc
+          .fontSize(fontSize)
+          .font('Helvetica')
+          .fillColor('#000000')
+          .text('on Date', labelStartX, y);
+        
+        // Date on right side
+        const accidentDateText = payload.accidentDate || '';
+        doc.font('Helvetica-Bold');
+        const accidentDateWidth = doc.widthOfString(accidentDateText);
+        doc.text(accidentDateText, rightEdgeX - accidentDateWidth, y);
+        
+        y += baseLineSpacing + 3;
+
+        // Vehicle description
+        doc
+          .fontSize(fontSize)
+          .font('Helvetica')
+          .fillColor('#000000')
+          .text('Vehicle', labelStartX, y);
+
+        const vehicleLabelWidth = doc.widthOfString('Vehicle');
+        const vehicleValueX = labelStartX + vehicleLabelWidth + valueGap;
+        const vehicleValueWidth = rightEdgeX - vehicleValueX - 15;
+
+        doc.font('Helvetica-Bold');
+        const vehicleTextHeight = doc.heightOfString(payload.accidentDescription || '', {
+          width: vehicleValueWidth,
+        });
+        doc.text(payload.accidentDescription || '', vehicleValueX, y, {
+          width: vehicleValueWidth,
+          lineGap: 5,
+        });
+        y += Math.max(baseLineSpacing, vehicleTextHeight + 10);
+
+        y += 15; // Section spacing
+
+        // Damage amount section
+        doc
+          .fontSize(fontSize)
+          .font('Helvetica')
+          .fillColor('#000000')
+          .text('We agreed the damages as per survey report for Rs.', labelStartX, y);
+
+        const damageLabelWidth = doc.widthOfString(
+          'We agreed the damages as per survey report for Rs.',
+        );
         const amountNumber =
           typeof payload.agreedDamageAmountNumber === 'number'
             ? payload.agreedDamageAmountNumber
             : undefined;
-
         doc
-          .font('Helvetica')
-          .text(
-            'We agreed the damages as per survey report for Rs.',
-            margin,
-            y,
-            { continued: true },
-          )
           .font('Helvetica-Bold')
           .text(
-            amountNumber !== undefined ? ` ${amountNumber.toFixed(2)}` : ' ________',
+            amountNumber !== undefined ? amountNumber.toFixed(2) : '________',
+            labelStartX + damageLabelWidth + valueGap,
+            y,
           );
+        y += baseLineSpacing + 3;
 
-        y = doc.y + lineGap;
-
+        // Amount in words
         if (payload.agreedDamageAmountWords) {
           doc
+            .fontSize(fontSize)
             .font('Helvetica')
-            .text('Rupees (in words): ', margin, y, { continued: true })
-            .font('Helvetica-Bold')
-            .text(payload.agreedDamageAmountWords);
-          y = doc.y + lineGap;
+            .fillColor('#000000')
+            .text('Rupees (in words)', labelStartX, y);
+
+          const wordsLabelWidth = doc.widthOfString('Rupees (in words)');
+          const wordsValueX = labelStartX + wordsLabelWidth + valueGap;
+          const wordsValueWidth = rightEdgeX - wordsValueX - 15;
+
+          doc.font('Helvetica-Bold');
+          const wordsTextHeight = doc.heightOfString(payload.agreedDamageAmountWords, {
+            width: wordsValueWidth,
+          });
+          doc.text(payload.agreedDamageAmountWords, wordsValueX, y, {
+            width: wordsValueWidth,
+            lineGap: 5,
+          });
+          y += Math.max(baseLineSpacing, wordsTextHeight + 10);
         }
 
-        // Footer: authorized signatory + contact
-        y += 40;
+        /* ---------- FOOTER: AUTHORIZED SIGNATORY ---------- */
+        const footerY = doc.page.height - margin - 100;
+        y = footerY;
+
         const signName = payload.authorizedSignatoryName || '';
 
         if (signName) {
           doc
+            .fontSize(11)
             .font('Helvetica-Bold')
+            .fillColor('#000000')
             .text(signName, margin, y, { width: pageWidth, align: 'right' });
-          y += lineGap;
+          y += 20;
         }
 
         doc
+          .fontSize(9)
           .font('Helvetica')
+          .fillColor('#666666')
           .text(
             '(Authorized Signatory - Transporter Agent / Owner)',
             margin,
@@ -682,12 +882,13 @@ export class PdfService {
             { width: pageWidth, align: 'right' },
           );
 
-        y += lineGap * 2;
+        y += 18;
 
         if (payload.userMobileNumber) {
           doc
-            .fontSize(8)
+            .fontSize(9)
             .font('Helvetica')
+            .fillColor('#000000')
             .text(
               `Contact: ${payload.userMobileNumber}`,
               margin,
