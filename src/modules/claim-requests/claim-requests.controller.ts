@@ -109,6 +109,24 @@ export class ClaimRequestsController {
     return this.claimRequestsService.findAll(filterDto);
   }
 
+  @Get('user/:userId')
+  @ApiOperation({
+    summary: 'Get claim requests by user ID',
+    description:
+      'Returns all claim requests for a specific user. Users can only see their own claim requests.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'List of claim requests for the user',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'User not found',
+  })
+  findByUserId(@Param('userId') userId: string) {
+    return this.claimRequestsService.findByUserId(userId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get claim request by ID' })
   @ApiResponse({

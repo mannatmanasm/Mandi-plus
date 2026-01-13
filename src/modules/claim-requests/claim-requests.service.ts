@@ -283,5 +283,20 @@ export class ClaimRequestsService {
       order: { createdAt: 'DESC' },
     });
   }
+
+  /**
+   * Get claim requests by user ID
+   * Users can only see their own claim requests
+   */
+  async findByUserId(userId: string): Promise<ClaimRequest[]> {
+    return await this.claimRequestRepository
+      .createQueryBuilder('claimRequest')
+      .leftJoinAndSelect('claimRequest.invoice', 'invoice')
+      .leftJoinAndSelect('invoice.truck', 'truck')
+      .leftJoinAndSelect('invoice.user', 'user')
+      .where('invoice.user.id = :userId', { userId })
+      .orderBy('claimRequest.createdAt', 'DESC')
+      .getMany();
+  }
 }
 
