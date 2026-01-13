@@ -117,6 +117,12 @@ export class InvoicesService {
       ? createInvoiceDto.productName[0]
       : createInvoiceDto.productName;
 
+    // calculate premium amount
+
+    const amount = createInvoiceDto.amount ?? 0;
+
+    const premiumAmount = amount > 0 ? Number((amount * 0.002).toFixed(2)) : 0;
+
     // 6. Create invoice entity
     const invoiceData: Partial<Invoice> = {
       user,
@@ -139,6 +145,7 @@ export class InvoicesService {
       quantity: createInvoiceDto.quantity,
       rate: createInvoiceDto.rate,
       amount: createInvoiceDto.amount,
+      premiumAmount,
 
       vehicleNumber: createInvoiceDto.vehicleNumber
         ? normalizeVehicleNumber(createInvoiceDto.vehicleNumber)
@@ -484,6 +491,8 @@ export class InvoicesService {
       { header: 'Quantity', key: 'quantity', width: 12 },
       { header: 'Rate', key: 'rate', width: 12 },
       { header: 'Amount', key: 'amount', width: 15 },
+      { header: 'Premium Amount', key: 'premiumAmount', width: 18 },
+
       { header: 'Vehicle Number', key: 'vehicleNumber', width: 18 },
       { header: 'Truck Number', key: 'truckNumber', width: 18 },
       { header: 'Owner Name', key: 'ownerName', width: 20 },
@@ -519,6 +528,7 @@ export class InvoicesService {
         quantity: invoice.quantity,
         rate: invoice.rate,
         amount: invoice.amount,
+        premiumAmount: invoice.premiumAmount ?? 0,
         vehicleNumber: invoice.vehicleNumber || '',
         truckNumber: invoice.truck?.truckNumber || '',
         ownerName: invoice.ownerName || '',
@@ -533,6 +543,8 @@ export class InvoicesService {
 
     // Format amount column as currency
     worksheet.getColumn('amount').numFmt = '#,##0.00';
+    worksheet.getColumn('premiumAmount').numFmt = '#,##0.00';
+
     worksheet.getColumn('rate').numFmt = '#,##0.00';
     worksheet.getColumn('quantity').numFmt = '#,##0.00';
 

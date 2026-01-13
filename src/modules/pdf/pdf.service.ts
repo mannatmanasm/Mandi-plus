@@ -257,7 +257,10 @@ export class PdfService {
         const qty = Number(invoiceData.quantity || 0);
         const rate = Number(invoiceData.rate || 0);
         const amount = Number(invoiceData.amount || 0);
-        const premiumAmount = Number((amount * 0.002).toFixed(2)); // 0.2%
+        const premiumAmount =
+          typeof invoiceData.premiumAmount === 'number'
+            ? invoiceData.premiumAmount
+            : 0;
 
         const productName = Array.isArray(invoiceData.productName)
           ? invoiceData.productName[0]
@@ -577,22 +580,18 @@ export class PdfService {
           .fontSize(16)
           .font('Helvetica-Bold')
           .fillColor('#000000')
-          .text(
-            'DAMAGE CERTIFICATE',
-            margin,
-            HEADER_Y,
-            { width: pageWidth, align: 'center' },
-          );
+          .text('DAMAGE CERTIFICATE', margin, HEADER_Y, {
+            width: pageWidth,
+            align: 'center',
+          });
 
         doc
           .fontSize(10)
           .font('Helvetica')
-          .text(
-            '(from Transporter Agent / Owner)',
-            margin,
-            HEADER_Y + 22,
-            { width: pageWidth, align: 'center' },
-          );
+          .text('(from Transporter Agent / Owner)', margin, HEADER_Y + 22, {
+            width: pageWidth,
+            align: 'center',
+          });
 
         // Horizontal line after header
         let y = HEADER_Y + 50;
@@ -664,13 +663,13 @@ export class PdfService {
           .font('Helvetica')
           .fillColor('#000000')
           .text('We certified that on dated', labelStartX, y);
-        
+
         // Date on right side
         const certDateText = payload.damageCertificateDate || '';
         doc.font('Helvetica-Bold');
         const certDateWidth = doc.widthOfString(certDateText);
         doc.text(certDateText, rightEdgeX - certDateWidth, y);
-        
+
         y += baseLineSpacing + 3;
 
         // Transport receipt - using "Transport Lorry Receipt No."
@@ -680,15 +679,15 @@ export class PdfService {
           .fillColor('#000000')
           .text('Under our Transport Lorry Receipt No.', labelStartX, y);
 
-        const receiptLabelWidth = doc.widthOfString('Under our Transport Lorry Receipt No.');
+        const receiptLabelWidth = doc.widthOfString(
+          'Under our Transport Lorry Receipt No.',
+        );
         const receiptValueX = labelStartX + receiptLabelWidth + valueGap;
 
         // Direct receipt number (remove any "Memo No." prefix if present)
         let receiptNumber = payload.transportReceiptMemoNo || '';
         receiptNumber = receiptNumber.replace(/^Memo\s*No\.?\s*/i, '').trim();
-        doc
-          .font('Helvetica-Bold')
-          .text(receiptNumber, receiptValueX, y);
+        doc.font('Helvetica-Bold').text(receiptNumber, receiptValueX, y);
 
         // Date on right side
         const receiptDateText = payload.transportReceiptDate || '';
@@ -697,8 +696,9 @@ export class PdfService {
         const receiptDateLabelWidth = doc.widthOfString(receiptDateLabel);
         doc.font('Helvetica-Bold');
         const receiptDateValueWidth = doc.widthOfString(receiptDateText);
-        const receiptDateX = rightEdgeX - receiptDateValueWidth - receiptDateLabelWidth - 15;
-        
+        const receiptDateX =
+          rightEdgeX - receiptDateValueWidth - receiptDateLabelWidth - 15;
+
         doc.font('Helvetica').text(receiptDateLabel, receiptDateX, y);
         doc
           .font('Helvetica-Bold')
@@ -742,7 +742,12 @@ export class PdfService {
         addFormField('For M/s', payload.forParty || '', true, true);
 
         // Invoice No
-        addFormField('As per Invoice No.', payload.invoiceNumber || '', true, false);
+        addFormField(
+          'As per Invoice No.',
+          payload.invoiceNumber || '',
+          true,
+          false,
+        );
 
         // Truck No
         addFormField('In Truck No.', payload.truckNumber || '-', true, false);
@@ -754,7 +759,11 @@ export class PdfService {
           .fontSize(fontSize)
           .font('Helvetica')
           .fillColor('#000000')
-          .text('Unfortunately, a truck met with an accident near', labelStartX, y);
+          .text(
+            'Unfortunately, a truck met with an accident near',
+            labelStartX,
+            y,
+          );
 
         const accidentLabelWidth = doc.widthOfString(
           'Unfortunately, a truck met with an accident near',
@@ -763,9 +772,12 @@ export class PdfService {
         const accidentValueWidth = rightEdgeX - accidentValueX - 15;
 
         doc.font('Helvetica-Bold');
-        const accidentTextHeight = doc.heightOfString(payload.accidentLocation || '', {
-          width: accidentValueWidth,
-        });
+        const accidentTextHeight = doc.heightOfString(
+          payload.accidentLocation || '',
+          {
+            width: accidentValueWidth,
+          },
+        );
         doc.text(payload.accidentLocation || '', accidentValueX, y, {
           width: accidentValueWidth,
           lineGap: 5,
@@ -778,13 +790,13 @@ export class PdfService {
           .font('Helvetica')
           .fillColor('#000000')
           .text('on Date', labelStartX, y);
-        
+
         // Date on right side
         const accidentDateText = payload.accidentDate || '';
         doc.font('Helvetica-Bold');
         const accidentDateWidth = doc.widthOfString(accidentDateText);
         doc.text(accidentDateText, rightEdgeX - accidentDateWidth, y);
-        
+
         y += baseLineSpacing + 3;
 
         // Vehicle description
@@ -799,9 +811,12 @@ export class PdfService {
         const vehicleValueWidth = rightEdgeX - vehicleValueX - 15;
 
         doc.font('Helvetica-Bold');
-        const vehicleTextHeight = doc.heightOfString(payload.accidentDescription || '', {
-          width: vehicleValueWidth,
-        });
+        const vehicleTextHeight = doc.heightOfString(
+          payload.accidentDescription || '',
+          {
+            width: vehicleValueWidth,
+          },
+        );
         doc.text(payload.accidentDescription || '', vehicleValueX, y, {
           width: vehicleValueWidth,
           lineGap: 5,
@@ -815,7 +830,11 @@ export class PdfService {
           .fontSize(fontSize)
           .font('Helvetica')
           .fillColor('#000000')
-          .text('We agreed the damages as per survey report for Rs.', labelStartX, y);
+          .text(
+            'We agreed the damages as per survey report for Rs.',
+            labelStartX,
+            y,
+          );
 
         const damageLabelWidth = doc.widthOfString(
           'We agreed the damages as per survey report for Rs.',
@@ -846,9 +865,12 @@ export class PdfService {
           const wordsValueWidth = rightEdgeX - wordsValueX - 15;
 
           doc.font('Helvetica-Bold');
-          const wordsTextHeight = doc.heightOfString(payload.agreedDamageAmountWords, {
-            width: wordsValueWidth,
-          });
+          const wordsTextHeight = doc.heightOfString(
+            payload.agreedDamageAmountWords,
+            {
+              width: wordsValueWidth,
+            },
+          );
           doc.text(payload.agreedDamageAmountWords, wordsValueX, y, {
             width: wordsValueWidth,
             lineGap: 5,
@@ -889,12 +911,10 @@ export class PdfService {
             .fontSize(9)
             .font('Helvetica')
             .fillColor('#000000')
-            .text(
-              `Contact: ${payload.userMobileNumber}`,
-              margin,
-              y,
-              { width: pageWidth, align: 'right' },
-            );
+            .text(`Contact: ${payload.userMobileNumber}`, margin, y, {
+              width: pageWidth,
+              align: 'right',
+            });
         }
 
         doc.end();

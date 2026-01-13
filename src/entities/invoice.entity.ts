@@ -112,6 +112,9 @@ export class Invoice {
   @Column('decimal', { precision: 12, scale: 2 })
   amount: number;
 
+  @Column('decimal', { precision: 12, scale: 2, default: 0 })
+  premiumAmount: number;
+
   // ===============================
   // USER RELATION
   // ===============================
