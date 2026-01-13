@@ -65,21 +65,16 @@ export class VehicleConditionService {
     await this.conditionRepo.save(record);
     return record;
   }
-
   async verifyVehicle(vehicleNumber: string) {
     const normalized = normalizeVehicleNumber(vehicleNumber);
 
-    // 1️⃣ Truck lookup (claim check)
+    // 1️⃣ Truck lookup (optional)
     const truck = await this.truckRepo.findOne({
       where: { truckNumber: normalized },
       select: ['claimCount'],
     });
 
-    if (!truck) {
-      throw new NotFoundException('Truck not found');
-    }
-
-    // 2️⃣ Vehicle condition lookup
+    // 2️⃣ Vehicle condition lookup (mandatory)
     const condition = await this.conditionRepo.findOne({
       where: { vehicleNumber: normalized },
     });
@@ -88,7 +83,7 @@ export class VehicleConditionService {
       throw new NotFoundException('Vehicle condition not found');
     }
 
-    // 3️⃣ Verification logic
+    // 3️⃣ Vehicle condition check
     const conditionPass =
       condition.permitStatus &&
       condition.driverLicense &&
@@ -97,11 +92,13 @@ export class VehicleConditionService {
       condition.emiClear &&
       condition.fitnessClear;
 
-    const hasClaim = truck.claimCount > 0;
+    // 4️⃣ Auto-claim verification logic
+    const hasClaim = truck ? truck.claimCount > 0 : false;
 
+    // 5️⃣ Final verification
     const verified = conditionPass && !hasClaim;
 
-    // 4️⃣ Final response (clean & UI friendly)
+    // 6️⃣ Response
     return {
       vehicleNumber: normalized,
 
@@ -112,7 +109,11 @@ export class VehicleConditionService {
         challan: condition.challanClear ? 'No Challan' : 'Challan Found',
         emi: condition.emiClear ? 'Paid' : 'Due',
         fitness: condition.fitnessClear ? 'Fit' : 'Unfit',
-        claim: hasClaim ? 'Claim Found' : 'No Claim',
+        claim: truck
+          ? hasClaim
+            ? 'Claim Found'
+            : 'No Claim'
+          : 'Auto Verified (No Truck Record)',
       },
 
       verified,
