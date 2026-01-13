@@ -250,8 +250,8 @@ export class InvoicesService {
     }
 
     /* ===============================
-     1. HANDLE TRUCK UPDATE
-     =============================== */
+   1. HANDLE TRUCK UPDATE
+   =============================== */
     if (updateInvoiceDto.truckNumber) {
       let truck = await this.truckRepository.findOne({
         where: { truckNumber: updateInvoiceDto.truckNumber },
@@ -273,8 +273,8 @@ export class InvoicesService {
     }
 
     /* ===============================
-     2. UPLOAD WEIGHMENT SLIPS
-     =============================== */
+   2. UPLOAD WEIGHMENT SLIPS
+   =============================== */
     if (weighmentSlipFiles && weighmentSlipFiles.length > 0) {
       const newUrls = await this.storageService.uploadMultipleFiles(
         weighmentSlipFiles,
@@ -288,11 +288,12 @@ export class InvoicesService {
     }
 
     /* ===============================
-     3. PREPARE UPDATE DATA
-     =============================== */
+   3. PREPARE UPDATE DATA
+   =============================== */
     const {
       truckNumber, // handled separately
-      invoiceNumber, // ❌ should never be updated
+      invoiceNumber, // never update
+      amount, // 👈 handle manually
       ...rest
     } = updateInvoiceDto as any;
 
@@ -305,15 +306,26 @@ export class InvoicesService {
     }
 
     /* ===============================
-     4. APPLY UPDATES
-     =============================== */
+   4. AMOUNT + PREMIUM SYNC (🔥 FIX)
+   =============================== */
+    if (amount !== undefined) {
+      const numericAmount = Number(amount) || 0;
+
+      invoice.amount = numericAmount;
+      invoice.premiumAmount =
+        numericAmount > 0 ? Number((numericAmount * 0.002).toFixed(2)) : 0;
+    }
+
+    /* ===============================
+   5. APPLY REST UPDATES
+   =============================== */
     Object.assign(invoice, rest);
 
     const updatedInvoice = await this.invoiceRepository.save(invoice);
 
     /* ===============================
-     5. REGENERATE PDF
-     =============================== */
+   6. REGENERATE PDF
+   =============================== */
     await this.invoicePdfQueue.add('generate-pdf', {
       invoiceId: updatedInvoice.id,
     });
