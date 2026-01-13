@@ -39,8 +39,9 @@ export class ClaimRequestsService {
   async createClaimByTruckNumber(
     truckNumber: string,
   ): Promise<ClaimRequest> {
-    // 1. Find truck by truck number
-    const truck = await this.truckRepository.findOne({
+   try {
+     // 1. Find truck by truck number
+     const truck = await this.truckRepository.findOne({
       where: { truckNumber },
     });
 
@@ -53,6 +54,7 @@ export class ClaimRequestsService {
     truck.claimCount++;
     await this.truckRepository.save(truck);
 
+
     // 2. Find latest invoice for this truck
     const latestInvoice = await this.invoiceRepository.findOne({
       where: { truck: { id: truck.id } },
@@ -60,36 +62,31 @@ export class ClaimRequestsService {
       order: { createdAt: 'DESC' },
     });
 
+
     if (!latestInvoice) {
       throw new NotFoundException(
         `No invoice found for truck ${truckNumber}`,
       );
     }
 
-    // 3. Check if claim request already exists for this invoice
     if (latestInvoice.claimRequest) {
       throw new ConflictException(
         `Claim request already exists for invoice ${latestInvoice.invoiceNumber}`,
       );
     }
 
-    // 4. Validate invoice has isClaim flag set
-    if (!latestInvoice.isClaim) {
-      throw new BadRequestException(
-        `Invoice ${latestInvoice.invoiceNumber} is not marked as a claim invoice`,
-      );
-    }
+    latestInvoice.isClaim = true;
+    await this.invoiceRepository.save(latestInvoice);
 
-    // 5. Create claim request with defaults
-    // Status will be PENDING (default from entity)
-    // supportedMedia will be [] (default from entity)
-    // All other fields will be null (nullable fields)
     const claimRequest = this.claimRequestRepository.create({
       invoice: latestInvoice,
-      // All other fields use defaults from entity
     });
 
     return await this.claimRequestRepository.save(claimRequest);
+   } catch (error) {
+    console.error(error);
+    throw error;
+   }
   }
 
   /**
@@ -285,6 +282,21 @@ export class ClaimRequestsService {
       relations: ['invoice', 'invoice.truck', 'invoice.user'],
       order: { createdAt: 'DESC' },
     });
+  }
+
+  /**
+   * Get claim requests by user ID
+   * Users can only see their own claim requests
+   */
+  async findByUserId(userId: string): Promise<ClaimRequest[]> {
+    return await this.claimRequestRepository
+      .createQueryBuilder('claimRequest')
+      .leftJoinAndSelect('claimRequest.invoice', 'invoice')
+      .leftJoinAndSelect('invoice.truck', 'truck')
+      .leftJoinAndSelect('invoice.user', 'user')
+      .where('invoice.user.id = :userId', { userId })
+      .orderBy('claimRequest.createdAt', 'DESC')
+      .getMany();
   }
 }
 

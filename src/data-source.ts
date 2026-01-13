@@ -1,6 +1,5 @@
-import { config } from 'pushenv';
-
-config();
+import dotenv from 'dotenv';
+dotenv.config();
 
 import { DataSource } from 'typeorm';
 
