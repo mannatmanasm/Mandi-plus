@@ -257,10 +257,7 @@ export class PdfService {
         const qty = Number(invoiceData.quantity || 0);
         const rate = Number(invoiceData.rate || 0);
         const amount = Number(invoiceData.amount || 0);
-        const premiumAmount =
-          typeof invoiceData.premiumAmount === 'number'
-            ? invoiceData.premiumAmount
-            : 0;
+        const premiumAmount = Number(invoiceData.premiumAmount) || 0;
 
         const productName = Array.isArray(invoiceData.productName)
           ? invoiceData.productName[0]
