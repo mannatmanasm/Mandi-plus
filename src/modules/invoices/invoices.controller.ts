@@ -22,6 +22,7 @@ import {
   ApiConsumes,
   ApiBody,
   ApiQuery,
+  ApiParam,
 } from '@nestjs/swagger';
 import type { Response } from 'express';
 
@@ -37,6 +38,34 @@ import { RegenerateInvoiceDto } from './dto/regenerate-invoice.dto';
 @Controller('invoices')
 export class InvoicesController {
   constructor(private readonly invoicesService: InvoicesService) {}
+
+  @Patch(':id/verify')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Verify invoice and send WhatsApp message',
+    description:
+      'Marks invoice as verified. If PDF exists, triggers WhatsApp message via Chatrace.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Invoice UUID',
+    example: '8f3d0c7b-1234-4cde-9abc-9f1234567890',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Invoice verified and WhatsApp sent successfully',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invoice PDF not generated or invalid request',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Invoice not found',
+  })
+  async verifyInvoice(@Param('id') invoiceId: string) {
+    return this.invoicesService.verifyInvoice(invoiceId);
+  }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -147,7 +176,8 @@ export class InvoicesController {
         weighmentSlips: {
           type: 'array',
           items: { type: 'string', format: 'binary' },
-          description: 'Weighment slip image files (up to 10). These will replace all existing weighment slips.',
+          description:
+            'Weighment slip image files (up to 10). These will replace all existing weighment slips.',
         },
       },
       required: ['weighmentSlips'],
@@ -155,7 +185,8 @@ export class InvoicesController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Weighment slips uploaded and PDF regeneration queued successfully',
+    description:
+      'Weighment slips uploaded and PDF regeneration queued successfully',
   })
   @ApiResponse({ status: 404, description: 'Invoice not found' })
   @ApiResponse({ status: 400, description: 'No files provided' })

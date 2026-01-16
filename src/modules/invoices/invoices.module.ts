@@ -9,6 +9,7 @@ import { StorageModule } from '../storage/storage.module';
 import { QueueModule } from '../queue/queue.module';
 import { PdfModule } from '../pdf/pdf.module';
 import { InvoicePdfProcessor } from '../queue/processors/invoice-pdf.processor';
+import { ChatraceService } from './chatrace.service';
 
 @Module({
   imports: [
@@ -18,8 +19,7 @@ import { InvoicePdfProcessor } from '../queue/processors/invoice-pdf.processor';
     PdfModule,
   ],
   controllers: [InvoicesController],
-  providers: [InvoicesService, InvoicePdfProcessor],
+  providers: [InvoicesService, InvoicePdfProcessor, ChatraceService],
   exports: [InvoicesService],
 })
 export class InvoicesModule {}
-

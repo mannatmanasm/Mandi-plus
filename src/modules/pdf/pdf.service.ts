@@ -6,6 +6,10 @@ import sharp from 'sharp';
 const MANDI_PLUS_LOGO_URL =
   'https://res.cloudinary.com/dur7vlvdw/image/upload/v1766996140/mandiPlusLogo_glmnlu.png';
 
+const COMPANY_NAME = 'ENP FARMS PVT LTD';
+const COMPANY_ADDRESS =
+  'SY No. 38, 1 No. 51/4, Glass Factory Layout, Anandapur, Electronic City, Karnataka 560099';
+
 @Injectable()
 export class PdfService {
   async generateInvoicePdf(
@@ -15,7 +19,7 @@ export class PdfService {
   ): Promise<Buffer> {
     return new Promise(async (resolve, reject) => {
       try {
-        const margin = 40;
+        const margin = 20;
         const doc = new PDFDocument({ margin: margin, size: 'A4' });
         const buffers: Buffer[] = [];
 
@@ -25,35 +29,73 @@ export class PdfService {
 
         const pageWidth = doc.page.width - margin * 2;
         const rightEdgeX = margin + pageWidth;
-
-        // --- HEADER SECTION (Logo Left, Invoice Box Right) ---
+        // ================= HEADER =================
         const HEADER_Y = margin;
         let headerBottomY = HEADER_Y;
-
-        /* 1. LOGO (Top Left - Bigger) */
-        const LOGO_WIDTH = 140;
+        const LOGO_WIDTH = 110;
 
         try {
+          // 1️⃣ LOAD LOGO
           const logoResp = await axios.get(MANDI_PLUS_LOGO_URL, {
             responseType: 'arraybuffer',
           });
 
-          const logoImg = await sharp(logoResp.data)
-            .resize(LOGO_WIDTH * 4, null)
-            .toBuffer();
+          const sharpImg = sharp(logoResp.data);
+          const meta = await sharpImg.metadata();
 
-          const LOGO_Y = HEADER_Y - 45;
-          doc.image(logoImg, margin, LOGO_Y, { width: LOGO_WIDTH });
+          if (!meta.width || !meta.height) {
+            throw new Error('Invalid logo');
+          }
 
-          headerBottomY = HEADER_Y + 45;
-        } catch (logoErr) {
-          console.warn('Could not load MandiPlus logo:', logoErr.message);
+          // Calculate logo height to determine the starting point for text
+          const logoHeight = (LOGO_WIDTH * meta.height) / meta.width;
+          const logoBuffer = await sharpImg.resize(LOGO_WIDTH * 3).toBuffer();
+
+          // 2️⃣ DRAW LOGO (At the very top)
+          doc.image(logoBuffer, margin, HEADER_Y, { width: LOGO_WIDTH });
+
+          // Start text below the logo (logoHeight + a 15px gap for breathing room)
+          let currentY = HEADER_Y + logoHeight + 5;
+
+          // 3️⃣ COMPANY NAME (Below Logo)
           doc
-            .fontSize(20)
             .font('Helvetica-Bold')
+            .fontSize(10)
+            .fillColor('#000')
+            .text(COMPANY_NAME, margin, currentY, { width: 280 });
+
+          // Update currentY to the position right after the Company Name
+          currentY = doc.y + 2;
+
+          // 4️⃣ COMPANY ADDRESS (Below Company Name)
+          doc
+            .font('Helvetica')
+            .fontSize(8.5)
+            .fillColor('#444')
+            .text(COMPANY_ADDRESS, margin, currentY, {
+              width: 280,
+            });
+
+          headerBottomY = doc.y;
+        } catch (err) {
+          // Fallback logic remains the same
+          doc
+            .font('Helvetica-Bold')
+            .fontSize(18)
             .fillColor('#4309ac')
             .text('MandiPlus', margin, HEADER_Y);
-          headerBottomY = HEADER_Y + 25;
+
+          doc
+            .fontSize(10)
+            .fillColor('#000')
+            .text(COMPANY_NAME, margin, doc.y + 10);
+
+          doc
+            .fontSize(8.5)
+            .fillColor('#444')
+            .text(COMPANY_ADDRESS, { width: 280 });
+
+          headerBottomY = doc.y;
         }
 
         /* 2. INVOICE BOX (Top Right - Bigger) */
@@ -81,7 +123,7 @@ export class PdfService {
         headerBottomY = Math.max(headerBottomY, HEADER_Y + INVOICE_BOX_H);
 
         // --- HORIZONTAL LINE ---
-        let y = headerBottomY + 20;
+        let y = headerBottomY + 10;
 
         doc
           .moveTo(margin, y)
@@ -137,6 +179,8 @@ export class PdfService {
           .fillColor('#666666')
           .text('Supplier Details', rightColX + 15, startY + 8);
 
+        let supplierTextY = startY + 22;
+
         doc
           .fontSize(12)
           .font('Helvetica-Bold')
@@ -144,7 +188,8 @@ export class PdfService {
           .text(
             `Supplier Name: ${invoiceData.supplierName}`,
             rightColX + 15,
-            startY + 22,
+            supplierTextY,
+            { width: 200 },
           );
 
         doc
@@ -153,7 +198,8 @@ export class PdfService {
           .text(
             `Place of Supply: ${invoiceData.placeOfSupply}`,
             rightColX + 15,
-            startY + 38 + 2,
+            doc.y + 4,
+            { width: 200 },
           );
 
         y = startY + boxHeight + 15;
@@ -205,13 +251,20 @@ export class PdfService {
           .text(invoiceData.shipToName, rightColX + 15, billShipY + 25);
         doc
           .fontSize(11)
+          .font('Helvetica-Bold')
+          .text(invoiceData.shipToName, rightColX + 15, billShipY + 25, {
+            width: 200,
+          });
+
+        doc
+          .fontSize(11)
           .font('Helvetica')
           .text(
             Array.isArray(invoiceData.shipToAddress)
               ? invoiceData.shipToAddress.join('\n')
               : String(invoiceData.shipToAddress),
             rightColX + 15,
-            billShipY + 40,
+            doc.y + 3,
             { width: 205, lineGap: 2 },
           );
 

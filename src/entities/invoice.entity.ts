@@ -197,4 +197,20 @@ export class Invoice {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  // ===============================
+  // VERIFICATION & WHATSAPP
+  // ===============================
+
+  @Column({ default: false })
+  isVerified: boolean;
+
+  @Column({ type: 'timestamp', nullable: true })
+  verifiedAt: Date | null;
+
+  @Column({ default: false })
+  whatsappSent: boolean;
+
+  @Column({ type: 'timestamp', nullable: true })
+  whatsappSentAt: Date | null;
 }

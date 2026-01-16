@@ -21,6 +21,7 @@ import { ExportInvoicesDto } from './dto/export-invoices.dto';
 import * as ExcelJS from 'exceljs';
 import { RegenerateInvoiceDto } from './dto/regenerate-invoice.dto';
 import { normalizeVehicleNumber } from 'src/utils/vehicle-normalizer';
+import { ChatraceService } from './chatrace.service';
 
 @Injectable()
 export class InvoicesService {
@@ -34,6 +35,7 @@ export class InvoicesService {
     @InjectQueue('invoice-pdf')
     private readonly invoicePdfQueue: Queue,
     private readonly storageService: StorageService,
+    private readonly chatraceService: ChatraceService,
   ) {}
 
   private async generateInvoiceNumber(): Promise<string> {
@@ -56,6 +58,58 @@ export class InvoicesService {
     }
 
     return `INV-${year}-${String(nextSeq).padStart(6, '0')}`;
+  }
+
+  async sendInvoiceWhatsApp(invoice: Invoice): Promise<void> {
+    if (!invoice.pdfUrl) {
+      throw new BadRequestException('Invoice PDF URL is not available');
+    }
+    console.log('🔥 INSIDE sendInvoiceWhatsApp');
+
+    await this.chatraceService.sendInvoiceVerifiedFlow({
+      phone: invoice.user.mobileNumber,
+      supplierName: invoice.supplierName,
+      invoiceNumber: invoice.invoiceNumber,
+      pdfUrl: invoice.pdfUrl,
+    });
+    console.log('🔥 CHATRACE FUNCTION HIT');
+
+    invoice.whatsappSent = true;
+    invoice.whatsappSentAt = new Date();
+
+    await this.invoiceRepository.save(invoice);
+  }
+
+  async verifyInvoice(invoiceId: string) {
+    const invoice = await this.invoiceRepository.findOne({
+      where: { id: invoiceId },
+      relations: ['user'],
+    });
+    console.log('🔥 VERIFY INVOICE:', invoiceId, invoice);
+    console.log(User);
+    if (!invoice) throw new NotFoundException();
+
+    if (!invoice.pdfUrl) {
+      throw new BadRequestException('Invoice PDF not generated');
+    }
+
+    if (invoice.isVerified) {
+      return invoice; // already verified
+    }
+
+    invoice.isVerified = true;
+    invoice.verifiedAt = new Date();
+
+    await this.invoiceRepository.save(invoice);
+
+    // WhatsApp trigger
+    if (!invoice.whatsappSent) {
+      console.log('🔥 CALLING CHATRACE SERVICE');
+
+      await this.sendInvoiceWhatsApp(invoice);
+    }
+
+    return invoice;
   }
 
   async create(
