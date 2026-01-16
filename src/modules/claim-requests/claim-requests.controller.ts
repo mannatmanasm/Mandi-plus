@@ -35,7 +35,7 @@ import { CreateDamageFormDto } from './dto/create-damage-form.dto';
 export class ClaimRequestsController {
   constructor(
     private readonly claimRequestsService: ClaimRequestsService,
-  ) {}
+  ) { }
 
   @Post('by-truck')
   @HttpCode(HttpStatus.CREATED)
@@ -207,9 +207,9 @@ export class ClaimRequestsController {
       new ParseFilePipe({
         validators: [
           new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 }), // 10MB
-        new FileTypeValidator({
-          fileType: /\.(jpg|jpeg|png|gif|pdf|doc|docx|txt)$/i,
-        }),
+          new FileTypeValidator({
+            fileType: /(image\/(jpeg|png|gif)|application\/pdf|application\/msword|application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document|text\/plain)$/i,
+          }),
         ],
       }),
     )
