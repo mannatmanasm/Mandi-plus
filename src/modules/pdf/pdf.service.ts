@@ -167,61 +167,129 @@ export class PdfService {
         const leftColX = margin;
         const rightColX = 320;
         const startY = y;
-        const boxHeight = 90;
+
+        const leftBoxWidth = 270;
+        const rightBoxWidth = 255;
+        const minBoxHeight = 90;
 
         // common alignment
         const labelX = 15;
         const colonX = 110;
         const valueX = 120;
+        const paddingTop = 12;
+        const gapBetweenFields = 10;
+
+        // value width
+        const leftValueWidth = leftBoxWidth - valueX - 15;
+        const rightValueWidth = rightBoxWidth - valueX - 15;
+
+        /* ---------- FONT ---------- */
+        doc.fontSize(11).font('Helvetica-Bold').fillColor('#000000');
+
+        /* ---------- LEFT BOX HEIGHT CALC ---------- */
+        const termsText = invoiceData.terms || 'CUSTOM';
+
+        const leftContentHeight =
+          doc.heightOfString(invoiceData.invoiceNumber, {
+            width: leftValueWidth,
+          }) +
+          doc.heightOfString(
+            new Date(invoiceData.invoiceDate).toLocaleDateString('en-GB'),
+            { width: leftValueWidth },
+          ) +
+          doc.heightOfString(termsText, { width: leftValueWidth }) +
+          gapBetweenFields * 2;
+
+        const leftBoxHeight = Math.max(
+          minBoxHeight,
+          paddingTop + leftContentHeight + 12,
+        );
+
+        /* ---------- RIGHT BOX HEIGHT CALC ---------- */
+        const supplierNameHeight = doc.heightOfString(
+          invoiceData.supplierName,
+          { width: rightValueWidth },
+        );
+
+        const placeOfSupplyHeight = doc.heightOfString(
+          invoiceData.placeOfSupply,
+          { width: rightValueWidth },
+        );
+
+        const rightContentHeight =
+          supplierNameHeight + gapBetweenFields + placeOfSupplyHeight;
+
+        const rightBoxHeight = Math.max(
+          minBoxHeight,
+          paddingTop + rightContentHeight + 12,
+        );
+
+        /* ---------- FINAL BOX HEIGHT ---------- */
+        const finalBoxHeight = Math.max(leftBoxHeight, rightBoxHeight);
 
         /* ---------- LEFT BOX : INVOICE DETAILS ---------- */
         doc
-          .roundedRect(leftColX, startY, 270, boxHeight, 5)
+          .roundedRect(leftColX, startY, leftBoxWidth, finalBoxHeight, 5)
           .strokeColor('#CCCCCC')
           .lineWidth(0.5)
           .stroke();
 
-        doc.fontSize(11).font('Helvetica-Bold').fillColor('#000000');
+        let leftY = startY + paddingTop;
 
-        doc.text('Invoice Number', leftColX + labelX, startY + 12);
-        doc.text(':', leftColX + colonX, startY + 12);
-        doc.text(invoiceData.invoiceNumber, leftColX + valueX, startY + 12);
+        doc.text('Invoice Number', leftColX + labelX, leftY);
+        doc.text(':', leftColX + colonX, leftY);
+        doc.text(invoiceData.invoiceNumber, leftColX + valueX, leftY, {
+          width: leftValueWidth,
+        });
 
-        doc.text('Invoice Date', leftColX + labelX, startY + 27);
-        doc.text(':', leftColX + colonX, startY + 27);
+        leftY += gapBetweenFields + doc.currentLineHeight();
+
+        doc.text('Invoice Date', leftColX + labelX, leftY);
+        doc.text(':', leftColX + colonX, leftY);
         doc.text(
           new Date(invoiceData.invoiceDate).toLocaleDateString('en-GB'),
           leftColX + valueX,
-          startY + 27,
+          leftY,
+          { width: leftValueWidth },
         );
 
-        doc.text('Terms', leftColX + labelX, startY + 42);
-        doc.text(':', leftColX + colonX, startY + 42);
-        doc.text(invoiceData.terms || 'CUSTOM', leftColX + valueX, startY + 42);
+        leftY += gapBetweenFields + doc.currentLineHeight();
+
+        doc.text('Terms', leftColX + labelX, leftY);
+        doc.text(':', leftColX + colonX, leftY);
+        doc.text(termsText, leftColX + valueX, leftY, {
+          width: leftValueWidth,
+        });
 
         /* ---------- RIGHT BOX : SUPPLIER DETAILS ---------- */
         doc
-          .roundedRect(rightColX, startY, 255, boxHeight, 5)
+          .roundedRect(rightColX, startY, rightBoxWidth, finalBoxHeight, 5)
           .strokeColor('#CCCCCC')
           .lineWidth(0.5)
           .stroke();
 
-        doc.fontSize(11).font('Helvetica-Bold').fillColor('#000000');
+        let rightY = startY + paddingTop;
 
-        doc.text('Supplier Name', rightColX + labelX, startY + 12);
-        doc.text(':', rightColX + colonX, startY + 12);
-        doc.text(invoiceData.supplierName, rightColX + valueX, startY + 12, {
-          width: 120,
+        // Supplier Name
+        doc.text('Supplier Name', rightColX + labelX, rightY);
+        doc.text(':', rightColX + colonX, rightY);
+
+        doc.text(invoiceData.supplierName, rightColX + valueX, rightY, {
+          width: rightValueWidth,
         });
 
-        doc.text('Place of Supply', rightColX + labelX, startY + 27);
-        doc.text(':', rightColX + colonX, startY + 27);
-        doc.text(invoiceData.placeOfSupply, rightColX + valueX, startY + 27, {
-          width: 120,
+        rightY += supplierNameHeight + gapBetweenFields;
+
+        // Place of Supply
+        doc.text('Place of Supply', rightColX + labelX, rightY);
+        doc.text(':', rightColX + colonX, rightY);
+
+        doc.text(invoiceData.placeOfSupply, rightColX + valueX, rightY, {
+          width: rightValueWidth,
         });
 
-        // move cursor down
-        y = startY + boxHeight + 15;
+        /* ---------- MOVE CURSOR DOWN ---------- */
+        y = startY + finalBoxHeight + 15;
 
         /* ---------- BILL TO / SHIP TO ---------- */
         const billShipY = y;
