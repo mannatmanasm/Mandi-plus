@@ -106,6 +106,13 @@ export class UsersService {
     return await this.userRepository.save(user);
   }
 
+  async updateConsent(id: string, consentText: string): Promise<User> {
+    const user = await this.findOne(id);
+    user.isConsent = true;
+    user.consentText = consentText;
+    return await this.userRepository.save(user);
+  }
+
   async remove(id: string): Promise<void> {
     const user = await this.findOne(id);
     await this.userRepository.remove(user);

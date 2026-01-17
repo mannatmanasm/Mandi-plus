@@ -9,10 +9,11 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateConsentDto } from './dto/update-consent.dto';
 
 @ApiTags('Users')
 @Controller('users')
@@ -41,6 +42,26 @@ export class UsersController {
   @ApiResponse({ status: 404, description: 'User not found' })
   findOne(@Param('id') id: string) {
     return this.usersService.findOne(id);
+  }
+
+  @Patch(':id/consent')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Update user consent',
+    description:
+      'Sets the isConsent field to true and stores the consent text that the user agreed to',
+  })
+  @ApiBody({ type: UpdateConsentDto })
+  @ApiResponse({
+    status: 200,
+    description: 'User consent updated successfully',
+  })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  updateConsent(
+    @Param('id') id: string,
+    @Body() updateConsentDto: UpdateConsentDto,
+  ) {
+    return this.usersService.updateConsent(id, updateConsentDto.consentText);
   }
 
   @Patch(':id')
