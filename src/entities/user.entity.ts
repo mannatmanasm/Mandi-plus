@@ -126,6 +126,19 @@ export class User {
   invoices: Invoice[];
 
   // ===============================
+  // CONSENT
+  // ===============================
+
+  @Column({ default: false })
+  isConsent: boolean;
+
+  @Column({
+    type: 'text',
+    nullable: true,
+  })
+  consentText: string | null;
+
+  // ===============================
   // SYSTEM
   // ===============================
 

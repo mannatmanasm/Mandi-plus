@@ -8,7 +8,7 @@ const MANDI_PLUS_LOGO_URL =
 
 const COMPANY_NAME = 'ENP FARMS PVT LTD';
 const COMPANY_ADDRESS =
-  'SY No. 38, 1 No. 51/4, Glass Factory Layout, Anandapur, Electronic City, Karnataka 560099';
+  ' # 51/4, Glass Factory Layout, Anandapur, Electronic City, Karnataka 560099';
 
 @Injectable()
 export class PdfService {
@@ -19,7 +19,7 @@ export class PdfService {
   ): Promise<Buffer> {
     return new Promise(async (resolve, reject) => {
       try {
-        const margin = 20;
+        const margin = 15;
         const doc = new PDFDocument({ margin: margin, size: 'A4' });
         const buffers: Buffer[] = [];
 
@@ -27,15 +27,16 @@ export class PdfService {
         doc.on('end', () => resolve(Buffer.concat(buffers)));
         doc.on('error', reject);
 
-        const pageWidth = doc.page.width - margin * 2;
+        const pageWidth = doc.page.width - margin * 1.5;
         const rightEdgeX = margin + pageWidth;
 
         // --- HEADER SECTION (Logo Left, Invoice Box Right) ---
         const HEADER_Y = margin;
-        let headerBottomY = HEADER_Y;
+        const HEADER_TOP_Y = HEADER_Y - 35; //  TOP MARGIN INCREASED
 
-        /* 1. LOGO (Top Left - Bigger) */
-        const LOGO_WIDTH = 110;
+        let headerBottomY = HEADER_Y;
+        /* 1. LOGO (Top Left) */
+        const LOGO_WIDTH = 120;
 
         try {
           const logoResp = await axios.get(MANDI_PLUS_LOGO_URL, {
@@ -49,31 +50,39 @@ export class PdfService {
             throw new Error('Invalid logo');
           }
 
-          // Calculate logo height to determine the starting point for text
           const logoHeight = (LOGO_WIDTH * meta.height) / meta.width;
           const logoBuffer = await sharpImg.resize(LOGO_WIDTH * 3).toBuffer();
 
-          // 2️⃣ DRAW LOGO (At the very top)
-          doc.image(logoBuffer, margin, HEADER_Y, { width: LOGO_WIDTH });
-          // Start text below the logo (logoHeight + a 15px gap for breathing room)
-          let currentY = HEADER_Y + logoHeight + 5;
+          //  DRAW LOGO
+          doc.image(
+            logoBuffer,
+            margin - 14, //  LOGO LEFT OFFSET FIX (adjust 4–8 if needed)
+            HEADER_TOP_Y,
+            { width: LOGO_WIDTH },
+          );
 
+          let currentY = HEADER_Y + logoHeight - 80; // aligned just below logo
+
+          //  COMPANY NAME (aligned with logo column)
           doc
+            .font('Helvetica-Bold')
+            .fillColor('#210606')
+            .text(COMPANY_NAME, margin, currentY, {
+              lineGap: 0,
+              width: 380,
+            });
 
-            .fontSize(10)
-            .fillColor('#000')
-            .text(COMPANY_NAME, margin, currentY, { width: 280 });
+          //  move cursor naturally below company name
+          currentY = doc.y + 1;
 
-          // Update currentY to the position right after the Company Name
-          currentY = doc.y + 2;
-
-          // 4️⃣ COMPANY ADDRESS (Below Company Name)
+          // COMPANY ADDRESS (same left alignment)
           doc
             .font('Helvetica')
-            .fontSize(8.5)
-            .fillColor('#444')
+            .fontSize(9.5)
+            .fillColor('#210606')
             .text(COMPANY_ADDRESS, margin, currentY, {
-              width: 280,
+              width: 380,
+              lineGap: 0,
             });
 
           headerBottomY = doc.y;
@@ -83,28 +92,49 @@ export class PdfService {
             .font('Helvetica-Bold')
             .fontSize(18)
             .fillColor('#4309ac')
-            .text('MandiPlus', margin, HEADER_Y);
+            .text('MandiPlus', margin, HEADER_Y, {
+              lineGap: 0,
+            });
+
           doc
             .fontSize(10)
             .fillColor('#000')
-            .text(COMPANY_NAME, margin, doc.y + 10);
+            .text(COMPANY_NAME, margin, HEADER_Y + 22, {
+              lineGap: 0,
+            });
 
           doc
             .fontSize(8.5)
             .fillColor('#444')
-            .text(COMPANY_ADDRESS, { width: 280 });
+            .text(COMPANY_ADDRESS, margin, doc.y + 2, {
+              width: 280,
+              lineGap: 0,
+            });
 
           headerBottomY = doc.y;
         }
 
+        //  LEFT HEADER CENTER CALCULATION (logo + company + address)
+        const leftHeaderTop = HEADER_TOP_Y;
+        const leftHeaderHeight = headerBottomY - leftHeaderTop;
+        const leftHeaderCenterY = leftHeaderTop + leftHeaderHeight / 1.3;
+
         /* 2. INVOICE BOX (Top Right - Bigger) */
         const INVOICE_BOX_W = 120;
         const INVOICE_BOX_H = 35;
-        const INVOICE_BOX_X = rightEdgeX - INVOICE_BOX_W;
+        const INVOICE_BOX_X = rightEdgeX - INVOICE_BOX_W - 16; //  RIGHT MARGIN INCREASED
+
+        const invoiceBoxY = leftHeaderCenterY - INVOICE_BOX_H / 2; //  CENTER ALIGN
 
         doc
-          .roundedRect(INVOICE_BOX_X, HEADER_Y, INVOICE_BOX_W, INVOICE_BOX_H, 3)
-          .dash(3, { space: 2 })
+          .roundedRect(
+            INVOICE_BOX_X,
+            invoiceBoxY,
+            INVOICE_BOX_W,
+            INVOICE_BOX_H,
+            3,
+          )
+
           .strokeColor('#000000')
           .lineWidth(0.5)
           .stroke()
@@ -114,101 +144,92 @@ export class PdfService {
           .fontSize(14)
           .font('Helvetica-Bold')
           .fillColor('#000000')
-          .text('INVOICE', INVOICE_BOX_X, HEADER_Y + 10, {
+          .text('INVOICE', INVOICE_BOX_X, invoiceBoxY + 15, {
+            //  CHANGED
+
             width: INVOICE_BOX_W,
             align: 'center',
           });
 
-        headerBottomY = Math.max(headerBottomY, HEADER_Y + INVOICE_BOX_H);
-
         // --- HORIZONTAL LINE ---
-        let y = headerBottomY + 10;
+        let y = headerBottomY + 2;
 
         doc
           .moveTo(margin, y)
           .lineTo(rightEdgeX, y)
           .strokeColor('#000000')
-          .lineWidth(0.5)
+          .lineWidth(1.5)
           .stroke();
 
-        y += 15;
-
+        y += 10;
         /* ---------- GRID: INVOICE DETAILS (LEFT) & SUPPLIER DETAILS (RIGHT) ---------- */
+
         const leftColX = margin;
         const rightColX = 320;
         const startY = y;
         const boxHeight = 90;
 
-        // --- LEFT BOX: Invoice Details ---
+        // common alignment
+        const labelX = 15;
+        const colonX = 110;
+        const valueX = 120;
+
+        /* ---------- LEFT BOX : INVOICE DETAILS ---------- */
         doc
           .roundedRect(leftColX, startY, 270, boxHeight, 5)
           .strokeColor('#CCCCCC')
           .lineWidth(0.5)
           .stroke();
 
-        doc
-          .fontSize(11)
-          .font('Helvetica-Bold')
-          .fillColor('#000000')
-          .text('Invoice Number :', leftColX + 15, startY + 12);
-        doc.text(invoiceData.invoiceNumber, leftColX + 105, startY + 12);
+        doc.fontSize(11).font('Helvetica-Bold').fillColor('#000000');
 
-        doc.text('Invoice Date', leftColX + 15, startY + 27);
-        doc.text(':', leftColX + 105, startY + 27);
+        doc.text('Invoice Number', leftColX + labelX, startY + 12);
+        doc.text(':', leftColX + colonX, startY + 12);
+        doc.text(invoiceData.invoiceNumber, leftColX + valueX, startY + 12);
+
+        doc.text('Invoice Date', leftColX + labelX, startY + 27);
+        doc.text(':', leftColX + colonX, startY + 27);
         doc.text(
           new Date(invoiceData.invoiceDate).toLocaleDateString('en-GB'),
-          leftColX + 110,
+          leftColX + valueX,
           startY + 27,
         );
 
-        doc.text('Terms', leftColX + 15, startY + 42);
-        doc.text(':', leftColX + 105, startY + 42);
-        doc.text(invoiceData.terms || 'CUSTOM', leftColX + 110, startY + 42);
+        doc.text('Terms', leftColX + labelX, startY + 42);
+        doc.text(':', leftColX + colonX, startY + 42);
+        doc.text(invoiceData.terms || 'CUSTOM', leftColX + valueX, startY + 42);
 
-        // --- RIGHT BOX: Supplier Details (Name, Address, Place) ---
+        /* ---------- RIGHT BOX : SUPPLIER DETAILS ---------- */
         doc
-          .roundedRect(rightColX, startY, 235, boxHeight, 5)
+          .roundedRect(rightColX, startY, 255, boxHeight, 5)
           .strokeColor('#CCCCCC')
           .lineWidth(0.5)
           .stroke();
 
-        doc
-          .fontSize(9)
-          .font('Helvetica-Bold')
-          .fillColor('#666666')
-          .text('Supplier Details', rightColX + 15, startY + 8);
-        let supplierTextY = startY + 22;
+        doc.fontSize(11).font('Helvetica-Bold').fillColor('#000000');
 
-        doc
-          .fontSize(12)
-          .font('Helvetica-Bold')
-          .fillColor('#000000')
-          .text(
-            `Supplier Name: ${invoiceData.supplierName}`,
-            rightColX + 15,
-            supplierTextY,
-            { width: 200 },
-          );
+        doc.text('Supplier Name', rightColX + labelX, startY + 12);
+        doc.text(':', rightColX + colonX, startY + 12);
+        doc.text(invoiceData.supplierName, rightColX + valueX, startY + 12, {
+          width: 120,
+        });
 
-        doc
-          .fontSize(10)
-          .font('Helvetica-Bold')
-          .text(
-            `Place of Supply: ${invoiceData.placeOfSupply}`,
-            rightColX + 15,
-            doc.y + 4,
-            { width: 200 },
-          );
+        doc.text('Place of Supply', rightColX + labelX, startY + 27);
+        doc.text(':', rightColX + colonX, startY + 27);
+        doc.text(invoiceData.placeOfSupply, rightColX + valueX, startY + 27, {
+          width: 120,
+        });
 
+        // move cursor down
         y = startY + boxHeight + 15;
 
         /* ---------- BILL TO / SHIP TO ---------- */
         const billShipY = y;
-        const billShipBoxHeight = 75;
+        const billShipBoxHeight = 100;
 
         // Bill To
         doc
-          .roundedRect(leftColX, billShipY, 270, billShipBoxHeight, 5)
+          .roundedRect(leftColX, billShipY, 270, billShipBoxHeight, 8)
           .strokeColor('#CCCCCC')
           .lineWidth(0.5)
           .stroke();
@@ -235,7 +256,7 @@ export class PdfService {
 
         // Ship To
         doc
-          .roundedRect(rightColX, billShipY, 235, billShipBoxHeight, 5)
+          .roundedRect(rightColX, billShipY, 255, billShipBoxHeight, 8)
           .strokeColor('#CCCCCC')
           .lineWidth(0.5)
           .stroke();
@@ -334,7 +355,7 @@ export class PdfService {
         y = rowY + rowHeight + 15;
 
         /* ---------- NOTES ---------- */
-        const notesBoxHeight = 110;
+        const notesBoxHeight = 119;
         doc
           .roundedRect(margin, y, 360, notesBoxHeight, 5)
           .strokeColor('#CCCCCC')
@@ -398,7 +419,7 @@ export class PdfService {
           .fontSize(12)
           .text(`Rs. ${amount.toFixed(2)}`, subTotalX + 10, y + 33);
         // Premium Amount (0.2%)
-        const premiumBoxY = y + 65;
+        const premiumBoxY = y + 60;
 
         doc
           .roundedRect(subTotalX, premiumBoxY, 145, 60, 5)
@@ -412,14 +433,14 @@ export class PdfService {
           .text(' Insurance Amount (0.2%)', subTotalX + 10, premiumBoxY + 15);
 
         doc
-          .fontSize(12)
+          .fontSize(10)
           .text(
             `Rs ${premiumAmount.toFixed(2)}`,
             subTotalX + 10,
             premiumBoxY + 33,
           );
 
-        y += notesBoxHeight + 15; // Reduced spacing from 25 to 15
+        y += notesBoxHeight + 20; // Reduced spacing from 25 to 20
 
         /* ---------- WEIGHMENT SLIP & TERMS AND CONDITIONS (Halves) ---------- */
 
@@ -432,11 +453,10 @@ export class PdfService {
         const SECTION_HEIGHT = 260; // Increased from 200 to 260
 
         //  1. WEIGHMENT SLIP (Left Half)
-        doc
-          .fontSize(9)
-          .font('Helvetica-Bold')
-          .fillColor('#000000')
-          .text('Weightment Slip', LEFT_COL_X, y);
+        doc.fontSize(9).font('Helvetica-Bold').fillColor('#000000');
+        const HEADING_OFFSET = 12;
+
+        doc.text('Weightment Slip', LEFT_COL_X + HEADING_OFFSET, y);
 
         const boxStartY = y + 15;
 
@@ -472,17 +492,18 @@ export class PdfService {
 
         /* ---------- TERMS AND CONDITIONS ---------- */
 
-        // Heading OUTSIDE box (same as weighment)
-        doc
-          .fontSize(9)
-          .font('Helvetica-Bold')
-          .text('Insurance Terms and Conditions', RIGHT_COL_X, y);
+        doc.fontSize(10).font('Helvetica-Bold');
+        doc.text(
+          'Insurance Terms and Conditions',
+          RIGHT_COL_X + HEADING_OFFSET,
+          y,
+        );
 
         const termsBoxY = y + 15;
-        const PADDING = 10;
+        const PADDING = 15;
         const textX = RIGHT_COL_X + PADDING;
         let textY = termsBoxY + PADDING;
-        const textWidth = COL_WIDTH - PADDING * 2;
+        const textWidth = COL_WIDTH - PADDING * 3;
 
         doc.fontSize(7.8).font('Helvetica');
 
